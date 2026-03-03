@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Conference Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</head>
+<body>
+
+<!-- POPUP -->
+<div id="popupOverlay" class="popup-overlay" style="display:none;">
+  <div class="popup-box">
+      <h3 id="popupTitle"></h3>
+      <p id="popupMessage"></p>
+      <button onclick="closePopup()">OK</button>
+  </div>
+</div>
+
+<div class="container">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <h2>Office Panel</h2>
+        <ul>
+            <li class="active">Dashboard</li>
+            <li onclick="openModal()">Book Hall</li>
+            <li onclick="loadMyBookings()">My Bookings</li>
+            <li onclick="openAvailability()">Availability</li>
+            {% if role == 'admin' %}
+            <li onclick="openSettings()">Settings</li>
+            {% endif %}
+            <li><a href="/logout">Logout</a></li>
+        </ul>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+
+        <div class="header">
+            <h1>Conference Hall Booking</h1>
+            <div class="user-info" onclick="toggleUserMenu()">👤 {{ user }}</div>
+            <div id="userMenu" class="user-menu">
+             <p><b>User:</b> {{ user }}</p>
+            <p><b>Department:</b> {{ dept }}</p>
+            <p><b>Role:</b> {{ role }}</p>
+</div>
+        </div>
+
+        <div class="dashboard-layout">
+             <!-- LEFT: HALL CARDS -->
+            <div class="room-grid">
+            
+                
+        <!-- all hall cards -->
+                <div class="room-card">
+                <img src="{{ url_for('static', filename='room/Big_conference-hall-1.jpeg') }}">
+                <div class="room-info">
+                <h3>Big conference hall</h3>
+                <p>1st Floor</p>
+                <p class="capacity">Capacity: 15 People</p>
+                <button onclick="reserveHall('Big_conference-hall-1')">Reserve</button>
+      </div>
+  </div>
+
+    <div class="room-card">
+      <img src="{{ url_for('static', filename='room/Small_conference-hall-1.jpeg') }}">
+      <div class="room-info">
+          <h3>Small conference hall</h3>
+          <p>1st Floor</p>
+          <p class="capacity">Capacity: 7 People</p>
+          <button onclick="reserveHall('Small_conference-hall-1')">Reserve</button>
+      </div>
+  </div>
+
+  <div class="room-card">
+      <img src="{{ url_for('static', filename='room/conference-hall-2nd.jpeg') }}">
+      <div class="room-info">
+          <h3>Auditorium-2</h3>
+          <p>2nd Floor</p>
+          <p class="capacity">Capacity: 6 People</p>
+          <button onclick="reserveHall('conference-hall-2nd')">Reserve</button>
+      </div>
+  </div>
+
+  <div class="room-card">
+      <img src="{{ url_for('static', filename='room/conference-hall-3rd.jpeg') }}">
+      <div class="room-info">
+          <h3>Conference Hall 3</h3>
+          <p>3rd Floor</p>
+          <p class="capacity">Capacity: 9 People</p>
+          <button onclick="reserveHall('conference-hall-3rd')">Reserve</button>
+      </div>
+  </div>
+
+  <div class="room-card">
+      <img src="{{ url_for('static', filename='room/conference-hall-4th.jpeg') }}">
+      <div class="room-info">
+          <h3>Conference Hall 4</h3>
+          <p>4th Floor</p>
+          <p class="capacity">Capacity: 7 People</p>
+          <button onclick="reserveHall('conference-hall-4th')">Reserve</button>
+      </div>
+  </div>
+
+  
+
+
+
+
+<!-- BOOKING PANEL -->
+<div id="bookingModal" class="modal">
+  <div class="modal-box">
+    <h3>Book Hall</h3>
+
+    <select id="hallSelect">
+    <option value="Big_conference-hall-1">Big_conference-hall-1</option>
+    <option value="Small_conference-hall-1">Small_conference-hall-1</option>
+    <option value="Auditorium-2">Auditorium-2</option>
+    <option value="conference-hall-3rd">conference-hall-3rd</option>
+    <option value="conference-hall-4th">conference-hall-4th</option>
+    </select>
+
+    <input type="date" id="bookingDate">
+
+    <input type="time" id="startTime">
+    <input type="time" id="endTime">
+    <button onclick="closeModal()">Cancel</button>
+    <button type="button" onclick="submitBooking()">Book</button>
+  </div>
+</div>
+
+<!-- RESCHEDULE MODAL -->
+<div id="rescheduleModal" class="modal">
+  <div class="modal-box">
+    <h3>Reschedule Booking</h3>
+
+    <input type="date" id="resDate">
+    <input type="time" id="resStart">
+    <input type="time" id="resEnd">
+
+    <div class="modal-actions">
+      <button onclick="closeReschedule()">Cancel</button>
+      <button onclick="submitReschedule()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CORPORATE ADMIN SETTINGS -->
+<div id="settingsModal" class="modal">
+  <div class="modal-box corporate-settings">
+    <h2>Admin Control Center</h2>
+    <p class="subtitle">System & Facility Management</p>
+
+    <div class="settings-grid">
+        <button class="corp-btn primary" onclick="openRenameModal()">🏢 Manage Halls</button>
+        <button class="corp-btn success" onclick="openExport()">📊 Export Reports</button>
+        <button class="corp-btn neutral" onclick="closeSettings()">Close</button>
+    </div>
+  </div> <!-- closes main -->
+</div> <!-- closes container -->
+
+
+
+</div>
+</div><!-- dashboard-layout ends -->
+<!-- AVAILABILITY PANEL -->
+<div id="availabilityPanel" style="display:none; margin-top:30px;">
+    <h2>Hall Availability</h2>
+    <div id="hallCards" class="hall-row"></div>
+    <div id="slotDetails"></div>
+</div>
+
+<!-- MY BOOKINGS PANEL -->
+<div id="myBookingsPanel" style="display:none; margin-top:30px;">
+    <h2>My Bookings</h2>
+    <div id="myBookingsList" class="booking-list"></div>
+</div>
+
+<script>/*SCRIPT STARTS FROM HERE----------------------------- */
+
+let resBookingId = null;
+
+/*set today as default */
+document.addEventListener("DOMContentLoaded", () => {
+  const d = new Date().toISOString().split('T')[0];
+  const input = document.getElementById("bookingDate");
+  if(input) input.value = d;
+});
+
+/* Open RESHUDULE  */
+function openReschedule(id){
+    resBookingId = id;
+    document.getElementById("rescheduleModal").style.display = "flex";
+}
+
+
+/* OPEN BOOK HALL POPUP */
+function openModal(){
+    document.getElementById("bookingModal").style.display = "flex";
+}
+
+/* CLOSE POPUP */
+function closeModal(){
+    document.getElementById("bookingModal").style.display = "none";
+}
+
+/* SETTINGS PANEL */
+function openSettings(){
+    document.getElementById("settingsModal").style.display = "flex";
+}
+
+function closeSettings(){
+    document.getElementById("settingsModal").style.display = "none";
+}
+
+/* AVAILABILITY BUTTON */
+
+
+
+
+/* set today date */
+
+
+
+/* AJAX POPUP */
+async function submitBooking(){
+
+    const hall = document.getElementById("hallSelect").value;
+    const date = document.getElementById("bookingDate").value;
+    const start = document.getElementById("startTime").value;
+    const end = document.getElementById("endTime").value;
+
+    if(!start || !end){
+        alert("Select time");
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append("hall", hall);
+    fd.append("date", date);
+    fd.append("start_time", start);
+    fd.append("end_time", end);
+
+    const res = await fetch("/book", {
+        method: "POST",
+        body: fd
+    });
+
+    const data = await res.json();
+
+    showPopup("Success", data.message);
+
+    if(data.status === "success"){
+    showPopup("Success", data.message);
+    closeBooking();
+    location.reload();
+}
+}
+/* LoadBooking  */
+async function loadMyBookings(){
+
+    document.getElementById("availabilityPanel").style.display="none";
+    document.getElementById("myBookingsPanel").style.display="block";
+
+    const res = await fetch("/my_bookings");
+    const bookings = await res.json();
+
+    const box = document.getElementById("myBookingsList");
+    box.innerHTML="";
+
+    if(bookings.length===0){
+        box.innerHTML="<p>No bookings found</p>";
+        return;
+    }
+
+    bookings.forEach(b => {
+
+        box.innerHTML += `
+        <div class="booking-card">
+            <b>${b.hall}</b><br>
+            ${b.date}<br>
+            ${b.start} - ${b.end}<br>
+            Status: <span class="${b.status.toLowerCase()}">${b.status}</span>
+            ${b.rescheduled ? "<span class='rescheduled'> (Rescheduled)</span>" : ""}
+            <div style="margin-top:10px">
+                ${
+                    b.is_admin
+                    ? `<button class="cancel-btn" onclick="cancelBooking(${b.id})">Cancel</button>`
+                    : `<button class="reschedule-btn" onclick="openReschedule(${b.id})">Reschedule</button>`
+                }
+            </div>
+        </div>`;
+    });
+}
+
+function closeReschedule(){
+    document.getElementById("rescheduleModal").style.display = "none";
+}
+
+async function submitReschedule(){
+
+    const date = document.getElementById("resDate").value;
+    const start = document.getElementById("resStart").value;
+    const end = document.getElementById("resEnd").value;
+
+    const fd = new FormData();
+    fd.append("date", date);
+    fd.append("start_time", start);
+    fd.append("end_time", end);
+
+    const res = await fetch(`/reschedule/${resBookingId}`, {
+        method:"POST",
+        body:fd
+    });
+
+    const data = await res.json();
+
+    showPopup("Updated", data.message);
+    closeReschedule();
+    loadMyBookings();
+}
+
+/* Cancel Booking  */
+async function cancelBooking(id){
+
+    const reason = prompt("Enter cancellation reason:");
+    if(!reason) return;
+
+    const fd = new FormData();
+    fd.append("id", id);
+    fd.append("reason", reason);
+
+    const res = await fetch("/cancel_booking", {
+        method:"POST",
+        body:fd
+    });
+
+    const data = await res.json();
+    showPopup("Cancelled", data.message);
+    loadMyBookings();
+}
+
+/* LOAD AVAILABILITY */
+
+function closeBooking(){
+    document.getElementById("bookingModal").style.display = "none";
+}
+
+/* RESERVE BUTTON */
+function reserveHall(hall){
+    document.getElementById("bookingModal").style.display = "flex";
+    document.getElementById("hallSelect").value = hall;
+}
+/* Availability javascript */
+function openAvailability(){
+    document.getElementById("availabilityPanel").style.display = "block";
+    loadHallCards();
+}
+
+const hallNames = {
+  "Big_conference-hall-1": "Big Conference Hall",
+  "Small_conference-hall-1": "Small Conference Hall",
+  "Auditorium-2": "Auditorium-2",
+  "conference-hall-3rd": "Conference Hall 3",
+  "conference-hall-4th": "Conference Hall 4",
+  "Raju-3": "Raju Meeting Room"
+};
+
+async function loadHallCards(){
+
+    const res = await fetch("/hall_stats");
+    const halls = await res.json();
+
+    const container = document.getElementById("hallCards");
+    container.innerHTML = "";
+
+    Object.keys(halls).forEach(hall => {
+
+        const card = document.createElement("div");
+        card.className = "availability-card";
+        card.innerHTML = `<b>${hallNames[hall] || hall}</b>`;
+        card.onclick = () => loadSlots(hall)
+        
+        container.appendChild(card);
+    });
+}
+
+
+
+
+
+
+async function loadSlots(hall){
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const res = await fetch(`/availability?hall=${hall}&date=${today}`);
+    const slots = await res.json();
+
+    const box = document.getElementById("slotDetails");
+
+    let html = `<h3 style="margin-top:20px">${hallNames[hall] || hall}</h3>`;
+
+    // office hours
+    let startDay = 9 * 60;   // 09:00
+    let endDay   = 18 * 60;  // 18:00
+
+    function toMinutes(t){
+        let [h,m] = t.split(":").map(Number);
+        return h*60+m;
+    }
+
+    function toTime(m){
+        let h = Math.floor(m/60);
+        let min = m%60;
+        return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+    }
+
+    if(slots.length === 0){
+        html += `<div class="free-card">Fully Available</div>`;
+    } else {
+
+        let lastEnd = startDay;
+
+        html += `<div class="slot-row">`;
+
+        slots.forEach(slot => {
+
+            let s = toMinutes(slot[0]);
+            let e = toMinutes(slot[1]);
+
+            // show free time before booking
+            if(s > lastEnd){
+                html += `
+                <div class="free-card">
+                    Available<br>
+                    ${toTime(lastEnd)} - ${toTime(s)}
+                </div>`;
+            }
+
+            // booked slot
+            html += `
+            <div class="busy-card">
+                <b>${slot[2]}</b><br>
+                ${slot[0]} - ${slot[1]}<br>
+                <small>${slot[3]}</small>
+            </div>`;
+
+            lastEnd = e;
+        });
+
+        // free time after last booking
+        if(lastEnd < endDay){
+            html += `
+            <div class="free-card">
+                Available<br>
+                ${toTime(lastEnd)} - ${toTime(endDay)}
+            </div>`;
+        }
+
+        html += `</div>`;
+    }
+
+    box.innerHTML = html;
+}
+
+/* USER MENU */
+function toggleUserMenu(){
+    const menu = document.getElementById("userMenu");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+}
+
+/* POPUP */
+function showPopup(title, message){
+    document.getElementById("popupTitle").innerText = title;
+    document.getElementById("popupMessage").innerText = message;
+    document.getElementById("popupOverlay").style.display = "flex";
+}
+
+function closePopup(){
+    document.getElementById("popupOverlay").style.display = "none";
+}
+
+</script>
+
+</body>
+</html>

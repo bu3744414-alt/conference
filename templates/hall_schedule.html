@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hall Schedule</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <div class="main">
+        <h2>{{ hall_name }} Schedule</h2>
+
+        <a href="/">⬅ Back to Dashboard</a>
+
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Department</th>
+            </tr>
+
+            {% if bookings %}
+                {% for b in bookings %}
+                <tr>
+                    <td>{{ b[1] }}</td>
+                    <td>{{ b[2] }} - {{ b[3] }}</td>
+                    <td>{{ b[0] }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="3">No bookings for this hall</td>
+                </tr>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+</body>
+</html>
