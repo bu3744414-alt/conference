@@ -1,139 +1,112 @@
 from flask import Flask, render_template, request, redirect, session, jsonify, send_file
-import sqlite3
+import pyodbc
 from datetime import datetime, date
 import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-DB = "booking.db"
+
+
 
 # ---------------- DATABASE INIT ----------------
-def init_db():
-    conn = sqlite3.connect(DB)
+# ---------------- SQL CONNECTIONS ----------------
+import psycopg2
+import os
 
-    conn.execute("""
-CREATE TABLE IF NOT EXISTS bookings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    hall TEXT,
-    department TEXT,
-    date TEXT,
-    start_time TEXT,
-    end_time TEXT,
-    booked_by TEXT,
-    booked_on TEXT,
-    remarks TEXT,
-    status TEXT DEFAULT 'Pending',
-    active INTEGER DEFAULT 1,
-    cancel_reason TEXT,
-    rescheduled INTEGER DEFAULT 0
-)
-""")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-    # ⭐ USERS TABLE (for employee login)
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        employee_id TEXT UNIQUE,
-        username TEXT,
-        department TEXT,
-        password TEXT,
-        role TEXT
-    )
-    """)
-
-    # ⭐ halls table
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS halls (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE
-    )
-    """)
-
-    # insert default halls
-    if conn.execute("SELECT COUNT(*) FROM halls").fetchone()[0] == 0:
-        default = [
-            "Big_conference-hall-1",
-            "Small_conference-hall-1",
-            "conference-hall-2nd",
-            "conference-hall-3rd",
-            "conference-hall-4th"
-        ]
-        for h in default:
-            conn.execute("INSERT INTO halls(name) VALUES(?)",(h,))
-
-    conn.commit()
-    conn.close()
+def get_connection():
+    conn = psycopg2.connect(DATABASE_URL)
+    return conn
 
 
 # ---------------- GET HALLS ----------------
-def get_halls():
-    conn = sqlite3.connect(DB)
-    halls = [row[0] for row in conn.execute("SELECT name FROM halls")]
-    conn.close()
-    return halls
 
 
-# ---------------- LOGIN ----------------
+# ---------------- LOGIN code ----------------
+
 @app.route('/login', methods=['GET','POST'])
 def login():
+
     if request.method == 'POST':
-        login_id = request.form.get('employee_id','').strip().lower()
+
+        login_input = request.form.get('employee_id','').strip()
         password = request.form.get('password','')
 
-        conn = sqlite3.connect(DB)
+        conn = get_connection()
+        cursor = conn.cursor()
 
-        user = conn.execute("""
-            SELECT username, department, role
-            FROM users
-            WHERE (LOWER(employee_id)=? OR LOWER(username)=?)
-            AND password=?
-        """, (login_id, login_id, password)).fetchone()
+        cursor.execute("""
+            SELECT employee_id, username, department, role, status_flg, password
+            FROM Login_mas
+            WHERE CAST(employee_id AS VARCHAR(20))=%s OR LOWER(username)=LOWER(%s)
+        """,(login_input, login_input))
 
+        user = new_func(cursor)
+
+        cursor.close()
         conn.close()
 
-        if user:
-            session['user'] = user[0]
-            session['dept'] = user[1]
-            session['role'] = user[2]
-            return redirect('/')
-        else:
-            return render_template("login.html", error="Invalid credentials")
-            print(login_id)
-            print(user)
+        if not user:
+            return render_template("login.html", error="Invalid Employee ID")
+
+        if user[5] != password:
+            return render_template("login.html", error="Invalid Password")
+
+        if user[4] != 'A':
+            return render_template("login.html",error="User account inactive")
+
+                                  
+
+        session['empno'] = user[0]
+        session['user'] = user[1]
+        session['dept'] = user[2]
+        session['role'] = user[3]
+
+        return redirect('/')
+
     return render_template("login.html")
 
+def new_func(cursor):
+    user = cursor.fetchone()
+    return user
 
+
+
+# ---------------- LOGOUT ----------------
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/login')
 
 
-# ---------------- HOME ----------------
+# ---------------- LOGIN ----------------
 @app.route('/')
 def home():
+
     if not session.get('user'):
         return redirect('/login')
 
-    conn = sqlite3.connect(DB)
+    conn = get_connection()
 
     bookings = conn.execute("""
-        SELECT id, hall, department, date, start_time, end_time,
-               booked_by, status, remarks
-        FROM bookings
-        WHERE active=1
-        ORDER BY date, start_time
+        SELECT empname, conference_id, department, trn_date,
+               start_time, end_time, status, purpose
+        FROM booking_transactions
+        ORDER BY trn_date, start_time
     """).fetchall()
 
     conn.close()
 
+    halls = get_halls()
+
     return render_template(
         "index.html",
         bookings=bookings,
-        total_halls=len(get_halls()),
+        total_halls=len(halls),
         booked_count=len(bookings),
-        halls=get_halls(),
+        halls=halls,
         user=session['user'],
         role=session['role'],
         dept=session['dept'],
@@ -147,15 +120,30 @@ def availability():
     hall = request.args.get('hall')
     date_val = request.args.get('date')
 
-    conn = sqlite3.connect(DB)
-    bookings = conn.execute("""
-        SELECT start_time, end_time, department, booked_by
-        FROM bookings
-        WHERE hall=? AND date=? AND active=1
+    conn = get_connection()
+
+    rows = conn.execute("""
+        SELECT start_time, end_time, department, empname
+        FROM booking_transactions
+        WHERE conference_id=%s AND trn_date=%s
     """,(hall,date_val)).fetchall()
+
     conn.close()
 
-    return jsonify(bookings)
+    data = []
+
+    for r in rows:
+        start = datetime.strptime(str(r[0])[:8], "%H:%M:%S").strftime("%I:%M %p")
+        end = datetime.strptime(str(r[1])[:8], "%H:%M:%S").strftime("%I:%M %p")
+
+        data.append([
+            start,
+            end,
+            r[2],
+            r[3]
+        ])
+
+    return jsonify(data)
 
 
 #--------Checking-------------
@@ -170,150 +158,224 @@ def book():
     meeting_date = request.form['date']
     start = request.form['start_time']
     end = request.form['end_time']
-    remarks = request.form.get('remarks') or ""
+    department = request.form.get('department')
 
-    conn = sqlite3.connect(DB)
-    cur = conn.cursor()
+    # If admin selects department use it
+    if session.get('role') == 'admin' and department:
+        dept_to_book = department
+    else:
+        dept_to_book = session['dept']
 
-    cur.execute("""
-        SELECT start_time,end_time,department,booked_by
-        FROM bookings
-        WHERE hall=? AND date=? AND active=1
-        AND (? < end_time AND ? > start_time)
-    """,(hall,meeting_date,start,end))
+    purpose = request.form.get('purpose')
 
-    conflict = cur.fetchone()
-    if conflict:
-        s,e,d,u = conflict
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # 🔍 Check for time conflict
+    cursor.execute("""
+        SELECT start_time, end_time, department, empname
+        FROM booking_transactions
+        WHERE conference_id=%s AND trn_date=%s
+        AND (%s < end_time AND %s > start_time)
+    """, (hall, meeting_date, start, end))
+
+    # office hours validation
+    if end <= start:
         conn.close()
         return jsonify(status="error",
-                       message=f"Hall booked by {d} ({u}) {s}-{e}")
+                       message="End time must be after start time")
+
+    if start < "09:00" or end > "18:00":
+        conn.close()
+        return jsonify(status="error",
+                       message="Booking allowed only between 9 AM and 6 PM")
+
+    conflict = cursor.fetchone()
+
+    if conflict:
+        s, e, d, u = conflict
+
+        s = datetime.strptime(str(s)[:8], "%H:%M:%S").strftime("%I:%M %p")
+        e = datetime.strptime(str(e)[:8], "%H:%M:%S").strftime("%I:%M %p")
+
+        conn.close()
+        return jsonify(
+            status="error",
+            message=f"Hall already booked by {d} ({u}) from {s} to {e}"
+        )
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    cur.execute("""
-        INSERT INTO bookings
-        (hall, department, date, start_time, end_time,
-         booked_by, booked_on, remarks,status)
-        VALUES (?,?,?,?,?,?,?,?)
-    """,(hall,session['dept'],meeting_date,start,end,
-         session['user'],now,remarks,"Booked"))
+    # ✅ Insert booking
+    cursor.execute("""
+    INSERT INTO booking_transactions
+    (empno, empname, conference_id, department, trn_date,
+    start_time, end_time, booked_on, purpose, status)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """,(
+    session['empno'],
+    session['user'],
+    hall,
+    dept_to_book,
+    meeting_date,
+    start,
+    end,
+    now,
+    purpose,
+    "Booked"
+))
 
     conn.commit()
     conn.close()
 
     return jsonify(status="success", message="Booking successful")
-
+#-------HALL STATS
 @app.route("/hall_stats")
 def hall_stats():
-    conn = sqlite3.connect(DB)
 
-    # get all halls
-    halls = [row[0] for row in conn.execute("SELECT name FROM halls")]
+    conn = get_connection()
 
-    # get booking counts
+    halls = [row[0] for row in conn.execute("""
+        SELECT conference_id
+        FROM conference_master
+        WHERE status='A'
+    """)]
+
     counts = dict(conn.execute("""
-        SELECT hall, COUNT(*)
-        FROM bookings
-        WHERE active=1
-        GROUP BY hall
+        SELECT conference_id, COUNT(*)
+        FROM booking_transactions
+        GROUP BY conference_id
     """).fetchall())
 
     conn.close()
 
-    # include halls with zero bookings
     data = {hall: counts.get(hall, 0) for hall in halls}
-
     return jsonify(data)
+    
 
 # ---------------- ADMIN CANCEL ----------------
-@app.route('/cancel/<int:id>', methods=['POST'])
-def cancel(id):
+@app.route('/cancel/<int:booking_id>', methods=['POST'])
+def cancel(booking_id):
+
     if session.get('role') != 'admin':
         return jsonify(status="error", message="Unauthorized")
 
-    reason = request.form.get('reason')
-    if not reason:
-        return jsonify(status="error", message="Reason required")
+    reason = request.form.get("reason")
 
-    conn = sqlite3.connect(DB)
-    conn.execute("""
-        UPDATE bookings
-        SET active=0, cancel_reason=?
-        WHERE id=?
-    """,(reason,id))
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE booking_transactions
+        SET
+            status='Cancelled',
+            admin_id=%s,
+            admin_name=%s,
+            admin_status='Cancelled',
+            admin_remarks=%s
+        WHERE booking_id=%s
+    """,(
+        session['empno'],   # admin id
+        session['user'],    # admin name
+        reason,
+        booking_id
+    ))
+
     conn.commit()
     conn.close()
 
-    return jsonify(status="success", message="Booking cancelled")
+    return jsonify(status="success", message="Booking cancelled successfully")
+#---------AdminBookings--------
+@app.route("/admin_bookings")
+def admin_bookings():
+    if session.get("role") != "admin":
+        return jsonify([])
+
+    today = date.today().isoformat()   # ✅ ensures YYYY-MM-DD
+
+    conn = get_connection()
+
+    rows = conn.execute("""
+        SELECT booking_id, conference_id, department, trn_date,
+            start_time, end_time, empname, status
+        FROM booking_transactions
+        WHERE trn_date=%s
+    """, (today,)).fetchall()
+
+    conn.close()
+
+    return jsonify([
+        {
+            "id": r[0],
+            "hall": r[1],
+            "department": r[2],
+            "date": r[3],
+            "start": r[4],
+            "end": r[5],
+            "user": r[6],
+            "status": r[7]
+        } for r in rows
+    ])
 
 
 # ---------------- RESCHEDULE ----------------
-@app.route('/reschedule/<int:id>', methods=['POST'])
-def reschedule(id):
+@app.route('/reschedule/<int:booking_id>', methods=['POST'])
+def reschedule(booking_id):
+
     if not session.get('user'):
         return jsonify(status="error", message="Login expired")
 
-    conn = sqlite3.connect(DB)
+    new_date = request.form['date']
+    new_start = request.form['start_time']
+    new_end = request.form['end_time']
+    reason = request.form.get('reason')
 
-    booking = conn.execute("""
-        SELECT hall, booked_by, date
-        FROM bookings
-        WHERE id=? AND active=1
-    """,(id,)).fetchone()
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    if not booking:
+    if new_end <= new_start:
         conn.close()
-        return jsonify(status="error", message="Booking not found")
+        return jsonify(status="error", message="End time must be after start time")
 
-    if booking[2] < str(date.today()):
-        conn.close()
-        return jsonify(status="error", message="Past booking")
-
-    if booking[1] != session['user']:
-        conn.close()
-        return jsonify(status="error", message="Unauthorized")
-
-    new_date=request.form['date']
-    new_start=request.form['start_time']
-    new_end=request.form['end_time']
-
-    conflict = conn.execute("""
-        SELECT start_time,end_time,department,booked_by
-        FROM bookings
-        WHERE hall=? AND date=? AND active=1
-        AND (? < end_time AND ? > start_time)
-    """,(booking[0],new_date,new_start,new_end)).fetchone()
-
-    if conflict:
-        s,e,d,u=conflict
+    if new_start < "09:00" or new_end > "18:00":
         conn.close()
         return jsonify(status="error",
-                       message=f"Slot taken by {d} ({u}) {s}-{e}")
+        message="Booking allowed only between 9 AM and 6 PM")
 
-    conn.execute("""
-        UPDATE bookings
-        SET date=?, start_time=?, end_time=?, status='Booked', rescheduled=1
-        WHERE id=?
-    """,(new_date,new_start,new_end,id))
+    cursor.execute("""
+        UPDATE booking_transactions
+        SET
+        rescheduled_date=%s,
+        re_start_time=%s,
+        re_end_time=%s,
+        resch_reason=%s,
+        rescheduled=1
+        WHERE booking_id=%s
+    """,(new_date,new_start,new_end,reason,booking_id))
 
     conn.commit()
     conn.close()
 
-    return jsonify(status="success", message="Rescheduled successfully")
-
-
+    return jsonify(status="success", message="Booking rescheduled successfully")
 # ---------------- ADMIN SETTINGS ----------------
 @app.route('/update_halls', methods=['POST'])
 def update_halls():
+
     if session.get('role') != 'admin':
         return jsonify(status="error", message="Unauthorized")
 
-    conn = sqlite3.connect(DB)
-    conn.execute("DELETE FROM halls")
+    conn = get_connection()
+    cursor = conn.cursor()
 
+    # clear existing halls
+    cursor.execute("UPDATE conference_master SET status='I'")
+
+    # insert new halls
     for name in request.form.values():
-        conn.execute("INSERT INTO halls(name) VALUES(?)",(name,))
+        cursor.execute("""
+            INSERT INTO conference_master (conference_id, conference_name, status)
+            VALUES (%s, %s, 'A')
+        """, (name, name))
 
     conn.commit()
     conn.close()
@@ -324,31 +386,31 @@ def update_halls():
 # ---------------- EXPORT BOOKINGS ----------------
 @app.route("/export_excel", methods=["POST"])
 def export_excel():
+
     if session.get('role') != 'admin':
         return jsonify(status="error", message="Unauthorized")
 
     start_date = request.form.get("start_date")
     end_date = request.form.get("end_date")
 
-    conn = sqlite3.connect(DB)
+    conn = get_connection()
 
     query = """
     SELECT
-        id,
-        hall,
+        empno,
+        empname,
+        conference_id,
         department,
-        date,
+        trn_date,
         start_time,
         end_time,
-        booked_by,
         booked_on,
-        remarks,
+        self_remarks,
         status,
-        rescheduled,
-        cancel_reason
-    FROM bookings
-    WHERE date BETWEEN ? AND ?
-    ORDER BY date, start_time
+        rescheduled
+    FROM booking_transactions
+    WHERE trn_date BETWEEN %s AND %s
+    ORDER BY trn_date, start_time
     """
 
     df = pd.read_sql_query(query, conn, params=(start_date, end_date))
@@ -357,10 +419,12 @@ def export_excel():
     file = "bookings_export.xlsx"
     df.to_excel(file, index=False, engine="openpyxl")
 
-    return send_file(file,
-                     as_attachment=True,
-                     download_name="bookings.xlsx",
-                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return send_file(
+        file,
+        as_attachment=True,
+        download_name="bookings.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 
 # ---------------- MY BOOKINGS ----------------
@@ -370,28 +434,34 @@ def my_bookings():
     if not session.get("user"):
         return jsonify([])
 
-    conn = sqlite3.connect(DB)
+    conn = get_connection()
 
     rows = conn.execute("""
-        SELECT id, hall, date, start_time, end_time, status, rescheduled
-        FROM bookings
-        WHERE booked_by=? AND active=1
-        ORDER BY date, start_time
-    """, (session["user"],)).fetchall()
+        SELECT booking_id,
+               conference_id,
+               trn_date,
+               start_time,
+               end_time,
+               status,
+               ISNULL(rescheduled,0)
+        FROM booking_transactions
+        WHERE empno=%s
+        ORDER BY trn_date, start_time
+    """,(session["empno"],)).fetchall()
 
     conn.close()
 
     bookings = []
+
     for r in rows:
         bookings.append({
-            "id": r[0],
+            "id" : r[0],
             "hall": r[1],
-            "date": r[2],
-            "start": r[3],
-            "end": r[4],
+            "date": str(r[2]),
+            "start": str(r[3])[:5],
+            "end": str(r[4])[:5],
             "status": r[5],
-            "rescheduled": r[6],
-            "is_admin": session.get("role") == "admin"
+            "rescheduled": r[6]
         })
 
     return jsonify(bookings)
@@ -405,8 +475,10 @@ def add_hall():
 
     name = request.form.get("name")
 
-    conn = sqlite3.connect(DB)
-    conn.execute("INSERT INTO halls(name) VALUES(?)",(name,))
+    conn = get_connection()
+    conn.execute("""INSERT INTO conference_master (conference_id, conference_name, status)
+        VALUES (%s, %s, 'A')
+    """,(name, name))
     conn.commit()
     conn.close()
 
@@ -414,36 +486,38 @@ def add_hall():
 #-----delete hall--------
 @app.route("/delete_hall", methods=["POST"])
 def delete_hall():
+
     if session.get('role') != 'admin':
         return jsonify(status="error", message="Unauthorized")
 
     name = request.form.get("name")
 
-    conn = sqlite3.connect(DB)
-    conn.execute("DELETE FROM halls WHERE name=?",(name,))
+    conn = get_connection()
+
+    conn.execute("""
+        UPDATE conference_master
+        SET status='I'
+        WHERE conference_id=%s
+    """,(name,))
+
     conn.commit()
     conn.close()
 
     return jsonify(status="success", message="Hall deleted")
 #---hall floor grouping 
-def group_halls():
-    halls = get_halls()
-    grouped = {}
+def get_halls():
+    conn = get_connection()
 
-    for h in halls:
-        parts = h.split("-")
+    halls = conn.execute("""
+        SELECT conference_id, conference_name
+        FROM conference_master
+        WHERE status='A'
+    """).fetchall()
 
-        if len(parts) >= 4:
-            floor = parts[2]   # 1st, 2nd, 3rd etc
-        else:
-            floor = "Other"
-
-        grouped.setdefault(floor, []).append(h)
-
-    return grouped
+    conn.close()
+    return halls
 #---usage analytics per hall---
 
 
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)

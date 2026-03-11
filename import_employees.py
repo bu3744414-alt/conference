@@ -2,7 +2,7 @@ import sqlite3
 from openpyxl import load_workbook
 
 # ✅ correct file path
-file_path = r"C:\Users\Administrator\conference\EMP Details Dept-26.xlsx"
+file_path = "EMP Details Dept-26.xlsx"
 
 # load excel
 wb = load_workbook(file_path)
