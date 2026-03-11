@@ -12,13 +12,12 @@ app.secret_key = "secret123"
 
 # ---------------- DATABASE INIT ----------------
 # ---------------- SQL CONNECTIONS ----------------
-
-
-DATABASE_URL = os.getenv("postgresql://neondb_owner:npg_jSVohT5AkUp7@ep-dark-bar-aiw3lfug-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_connection():
-    conn = psycopg2.connect(postgresql://neondb_owner:npg_jSVohT5AkUp7@ep-dark-bar-aiw3lfug-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require)
+    conn = psycopg2.connect(DATABASE_URL)
     return conn
+
 
 
 # ---------------- GET HALLS ----------------
@@ -89,13 +88,16 @@ def home():
         return redirect('/login')
 
     conn = get_connection()
+    cursor = conn.cursor()
 
-    bookings = conn.execute("""
-        SELECT empname, conference_id, department, trn_date,
-               start_time, end_time, status, purpose
-        FROM booking_transactions
-        ORDER BY trn_date, start_time
-    """).fetchall()
+    cursor.execute("""
+    SELECT empname, conference_id, department, trn_date,
+        start_time, end_time, status, purpose
+    FROM booking_transactions
+    ORDER BY trn_date, start_time
+    """)
+
+    bookings = cursor.fetchall()
 
     conn.close()
 
@@ -121,13 +123,13 @@ def availability():
     date_val = request.args.get('date')
 
     conn = get_connection()
-
-    rows = conn.execute("""
+    cursor = conn.cursor()
+    cursor.execute("""
         SELECT start_time, end_time, department, empname
         FROM booking_transactions
         WHERE conference_id=%s AND trn_date=%s
-    """,(hall,date_val)).fetchall()
-
+    """,(hall,date_val))
+    rows = cursor.fetchall()
     conn.close()
 
     data = []
@@ -234,18 +236,21 @@ def book():
 def hall_stats():
 
     conn = get_connection()
-
-    halls = [row[0] for row in conn.execute("""
+    cursor = conn.cursor()
+    halls = [row[0] for row in cursor.execute("""
         SELECT conference_id
         FROM conference_master
         WHERE status='A'
     """)]
+    halls = [row[0] for row in cursor.fetchall()]
+    
+    cursor.execute("""
+    SELECT conference_id, COUNT(*)
+    FROM booking_transactions
+    GROUP BY conference_id
+    """)
 
-    counts = dict(conn.execute("""
-        SELECT conference_id, COUNT(*)
-        FROM booking_transactions
-        GROUP BY conference_id
-    """).fetchall())
+    counts = dict(cursor.fetchall())
 
     conn.close()
 
@@ -294,13 +299,14 @@ def admin_bookings():
     today = date.today().isoformat()   # ✅ ensures YYYY-MM-DD
 
     conn = get_connection()
-
-    rows = conn.execute("""
+    cursor = conn.cursor()
+    rows = cursor.execute("""
         SELECT booking_id, conference_id, department, trn_date,
             start_time, end_time, empname, status
         FROM booking_transactions
         WHERE trn_date=%s
-    """, (today,)).fetchall()
+    """, (today,))
+    rows = cursor.fetchall()
 
     conn.close()
 
@@ -435,19 +441,20 @@ def my_bookings():
         return jsonify([])
 
     conn = get_connection()
-
-    rows = conn.execute("""
+    cursor = conn.cursor()
+    rows = cursor.execute("""
         SELECT booking_id,
                conference_id,
                trn_date,
                start_time,
                end_time,
                status,
-               ISNULL(rescheduled,0)
+               COALESCE(rescheduled,0)
         FROM booking_transactions
         WHERE empno=%s
         ORDER BY trn_date, start_time
-    """,(session["empno"],)).fetchall()
+    """,(session["empno"],))
+    rows = cursor.fetchall()
 
     conn.close()
 
@@ -476,7 +483,8 @@ def add_hall():
     name = request.form.get("name")
 
     conn = get_connection()
-    conn.execute("""INSERT INTO conference_master (conference_id, conference_name, status)
+    cursor = conn.cursor()
+    cursor.execute("""INSERT INTO conference_master (conference_id, conference_name, status)
         VALUES (%s, %s, 'A')
     """,(name, name))
     conn.commit()
@@ -493,8 +501,8 @@ def delete_hall():
     name = request.form.get("name")
 
     conn = get_connection()
-
-    conn.execute("""
+    cursor = conn.cursor()
+    cursor.execute("""
         UPDATE conference_master
         SET status='I'
         WHERE conference_id=%s
@@ -507,12 +515,13 @@ def delete_hall():
 #---hall floor grouping 
 def get_halls():
     conn = get_connection()
-
-    halls = conn.execute("""
+    cursor = conn.cursor()
+    cursor.execute("""
         SELECT conference_id, conference_name
         FROM conference_master
         WHERE status='A'
-    """).fetchall()
+    """)
+    halls = [row[0] for row in cursor.fetchall()]
 
     conn.close()
     return halls
@@ -520,4 +529,4 @@ def get_halls():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
