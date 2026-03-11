@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, redirect, session, jsonify, send_file
-import pyodbc
+
 from datetime import datetime, date
 import pandas as pd
-
+import psycopg2
+import os
 app = Flask(__name__)
 app.secret_key = "secret123"
 
@@ -11,13 +12,12 @@ app.secret_key = "secret123"
 
 # ---------------- DATABASE INIT ----------------
 # ---------------- SQL CONNECTIONS ----------------
-import psycopg2
-import os
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+
+DATABASE_URL = os.getenv("postgresql://neondb_owner:npg_jSVohT5AkUp7@ep-dark-bar-aiw3lfug-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
 
 def get_connection():
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = psycopg2.connect(postgresql://neondb_owner:npg_jSVohT5AkUp7@ep-dark-bar-aiw3lfug-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require)
     return conn
 
 
