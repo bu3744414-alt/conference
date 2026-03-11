@@ -237,11 +237,12 @@ def hall_stats():
 
     conn = get_connection()
     cursor = conn.cursor()
-    halls = [row[0] for row in cursor.execute("""
-        SELECT conference_id
-        FROM conference_master
-        WHERE status='A'
-    """)]
+    
+    cursor.execute("""
+    SELECT conference_id
+    FROM conference_master
+    WHERE status='A'
+    """)
     halls = [row[0] for row in cursor.fetchall()]
     
     cursor.execute("""
