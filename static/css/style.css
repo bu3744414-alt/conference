@@ -550,7 +550,7 @@ button:hover{
   margin-top:15px;
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap: 15px;
 }
 
 .booking-card{
@@ -709,12 +709,7 @@ gap:25px;
 margin-top:20px;
 }
 
-.booking-list{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-gap:20px;
-margin-top:20px;
-}
+
 
 .hall-row{
 display:flex;
@@ -747,11 +742,7 @@ gap:20px;
 margin-bottom:30px;
 }
 
-.booking-list{
-display:grid;
-grid-template-columns: repeat(auto-fit,minmax(250px,1fr));
-gap:15px;
-}
+
 
 #availabilityPanel{
 margin-top:20px;
@@ -793,4 +784,116 @@ font-size:14px;
 .content-panel{
     flex:1;
     min-height:500px;
+}
+.date-filter{
+    margin:20px;
+    text-align:center;
+    font-size:16px;
+}
+
+.date-filter input{
+    padding:6px 10px;
+    font-size:14px;
+}
+.conference-container{
+    display:flex;
+    gap:20px;
+    flex-wrap:wrap;
+    padding:20px;
+}
+
+.conference-card{
+    background:white;
+    border-radius:10px;
+    padding:20px;
+    width:220px;
+    box-shadow:0 3px 10px rgba(0,0,0,0.1);
+    text-align:left;
+}
+
+.conference-card h3{
+    margin-bottom:10px;
+    font-size:18px;
+}
+
+.card-details p{
+    margin:5px 0;
+}
+
+.status{
+    font-weight:bold;
+}
+
+.booked{
+    color:green;
+}
+
+.cancelled{
+    color:red;
+}
+
+.reschedule-btn{
+    margin-top:10px;
+    padding:7px 14px;
+    border:none;
+    background:#2d6cdf;
+    color:white;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+.reschedule-btn:hover{
+    background:#1c4fb6;
+}
+
+.booking-card{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    
+}
+
+.booking-left{
+    flex: 2;
+}
+
+.booking-middle{
+    flex: 1;
+}
+
+.booking-status{
+    flex: 0;
+    font-weight:bold;
+}
+
+.booking-actions{
+    display:flex;
+    align-items: center;
+    gap:10px;
+}
+.booking-purpose{
+    font-style: italic;
+    color:#555;
+    margin-top:4px;
+}
+.cancel-btn{
+    background:#e74c3c;
+    color:white;
+    border:none;
+    padding:6px 12px;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+.cancel-btn:hover{
+    background:#c0392b;
+}
+.booking-purpose{
+    color:#555;
+    font-style:italic;
+}
+.booking-card{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
 }

@@ -135,13 +135,24 @@
         <div id="slotDetails"></div>
     </div>
 <!-- MY BOOKINGS PANEL -->
+
     <div id="myBookingsPanel" style="display:none; margin-top:30px;">
         <h2>My Bookings</h2>
+        <div class="date-filter">
+            <input type="date" id="myBookingDate">
+            <button onclick="loadMyBookings()">OK</button>
+        </div>
+
         <div id="myBookingsList" class="booking-list"></div>
     </div>
 <!-- ADMIN BOOKINGS PANEL -->
     <div id="adminBookingsPanel" style="display:none; margin-top:30px;">
         <h2>All Department Bookings</h2>
+        <div class="date-filter">
+            <input type="date" id="adminBookingDate">
+            <button onclick="loadAdminBookings()">OK</button>
+        </div>
+        
         <div id="adminBookingsList" class="booking-list"></div>
     </div>
 
@@ -169,12 +180,12 @@
   <label>Department</label>
   <select id="deptSelect" name="department">
     <option value="">Select Department</option>
-    <option value="IT">IT</option>
-    <option value="HR">HR</option>
-    <option value="Admin">Admin</option>
-    <option value="Finance">Finance</option>
-    <option value="Operations">Operations</option>
-  </select>
+
+    {% for d in departments %}
+        <option value="{{ d }}">{{ d }}</option>
+    {% endfor %}
+
+    </select>
   {% endif %}
 
   <!-- Hall Selection -->
@@ -330,6 +341,21 @@
 
 
 /*------default time  ---------*/
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const myDate = document.getElementById("myBookingDate");
+    const adminDate = document.getElementById("adminBookingDate");
+
+    if(myDate) myDate.value = today;
+    if(adminDate) adminDate.value = today;
+
+});
+
+
+
 document.addEventListener("DOMContentLoaded", function () {
 
     const today = new Date().toISOString().split('T')[0];
@@ -558,12 +584,24 @@ const hallNames = {
 
 /* LoadBooking   Main*/
 async function loadMyBookings(){
+
     document.getElementById("dashboardPanel").style.display="none";
     document.getElementById("availabilityPanel").style.display="none";
     document.getElementById("adminBookingsPanel").style.display="none";
     document.getElementById("myBookingsPanel").style.display="block";
+    
+    let date = document.getElementById("myBookingDate").value;
 
-    const res = await fetch("/my_bookings");
+    let url = "/my_bookings";
+
+    // ⭐ If no date selected, use today's date
+    if(!date){
+        date = new Date().toISOString().split('T')[0];
+    }
+
+    url += "?date=" + date;
+
+    const res = await fetch(url);
     const bookings = await res.json();
 
     const box = document.getElementById("myBookingsList");
@@ -577,26 +615,45 @@ async function loadMyBookings(){
     bookings.forEach(b => {
 
         const hallName = hallNames[b.hall] || b.hall;
+        const statusText = b.rescheduled == 1 ? "Rescheduled" : b.status;
+        const reasonText = b.rescheduled == 1 ? "Reschedule Reason" : "Purpose";
+
+        // ⭐ cancellation reason
+        let cancelReasonText = "";
+        if(b.status === "Cancelled" && b.cancel_reason){
+            cancelReasonText = `
+            <br>
+            <small>Cancellation Reason: ${b.cancel_reason}</small>
+            `;
+        }
 
         box.innerHTML += `
-<div class="booking-card">
+        <div class="booking-card">
 
-    <b>${hallName}</b><br>
-    Date: ${b.date}<br>
-    Time: ${b.start} - ${b.end}<br>
+            <div class="booking-left">
+                <b>${hallName}</b><br>
+                <small>${reasonText}: ${b.purpose}</small>
+                ${cancelReasonText}
+            </div>
 
-    Status: <span class="${b.status.toLowerCase()}">${b.status}</span>
+            <div class="booking-middle">
+                Date: ${b.date}<br>
+                Time: ${b.start} - ${b.end}
+            </div>
 
-    <div style="margin-top:10px">
+            <div class="booking-status ${statusText.toLowerCase()}">
+                ${statusText}
+            </div>
 
-        <button class="reschedule-btn"
-        onclick="openReschedule(${b.id})">
-        Reschedule
-        </button>
+            <div class="booking-actions">
+                ${(b.status === "Booked" && b.date >= new Date().toISOString().split('T')[0]) ? `
+                <button class="reschedule-btn"
+                onclick="openReschedule(${b.id})">
+                Reschedule
+                </button>` : ``}
+            </div>
 
-    </div>
-
-</div>`;
+        </div>`;
     });
 }
 
@@ -873,6 +930,12 @@ function closePopup(){
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("myBookingDate").value =
+        new Date().toISOString().split('T')[0];
+});
+
+
+document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("bookingForm");
 
   if(form){
@@ -885,12 +948,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 async function loadAdminBookings(){
-
+    document.getElementById("dashboardPanel").style.display="none";
     document.getElementById("availabilityPanel").style.display="none";
     document.getElementById("myBookingsPanel").style.display="none";
     document.getElementById("adminBookingsPanel").style.display="block";
 
-    const res = await fetch("/admin_bookings");
+    const date = document.getElementById("adminBookingDate").value;
+
+    let url = "/admin_bookings";
+
+    if(date){
+        url += "?date=" + date;
+    }
+
+    
+
+    const res = await fetch(url);
     const bookings = await res.json();
 
     const box = document.getElementById("adminBookingsList");
@@ -902,25 +975,79 @@ async function loadAdminBookings(){
     }
 
     bookings.forEach(b => {
+        
+        
+        const statusText = b.rescheduled == 1 ? "Rescheduled" : b.status;   
+        const reasonText = b.rescheduled == 1 ? "Reschedule Reason" : "Purpose";
+
+        const today = new Date().toISOString().split('T')[0];
+
+        let cancelBtn = "";
+
+        if(b.date >= today && b.status === "Booked"){
+            cancelBtn = `
+            <button class="cancel-btn" onclick="openCancel(${b.id})">
+                Cancel
+            </button>`;
+        }
+        
+        // ⭐ Decide what text to show
+        // ⭐ cancellation reason
+    let cancelReasonText = "";
+
+    if(b.status === "Cancelled" && b.cancel_reason){
+        cancelReasonText = `
+        <br>
+        <small>Cancellation Reason: ${b.cancel_reason}</small>
+        `;
+    }
+
+    let deptText = "";
+
+    if(b.user_dept === "Admin"){
+        deptText = `
+        <small>Booked for: ${b.department}</small>
+        <br>
+        <small>Booked by: ${b.user} (ADMIN)</small>
+        `;
+    }
+    else{
+        deptText = `
+        <small>Department: ${b.department}</small>
+        <br>
+        <small>Booked by: ${b.user}</small>
+        `;
+    }
 
         box.innerHTML += `
         <div class="booking-card">
-            <b>${b.hall}</b><br>
-            Department: ${b.department}<br>
-            Booked by: ${b.user}<br>
-            ${b.date}<br>
-            ${b.start} - ${b.end}<br>
-            Status: <span class="${b.status.toLowerCase()}">${b.status}</span>
 
-            <div style="margin-top:10px">
-                <button class="cancel-btn" onclick="openCancel(${b.id})">
-                    Cancel Booking
-                </button>
+            <div class="booking-left">
+                ${b.hall}
+                <br>
+                ${deptText}
+                <br>
+                
+                <small>${reasonText}: ${b.purpose}</small>
+                ${cancelReasonText}
             </div>
+
+            <div class="booking-middle">
+                Date: ${b.date}<br>
+                Time: ${b.start} - ${b.end}
+            </div>
+
+            <div class="booking-status ${statusText.toLowerCase()}">
+                ${statusText}
+            </div>
+
+            <div class="booking-actions">
+                ${cancelBtn}
+            </div>
+
         </div>`;
     });
 }
-
 
 
 
