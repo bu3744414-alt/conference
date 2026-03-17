@@ -140,3 +140,133 @@ document.addEventListener("DOMContentLoaded", () => {
     if(end) end.value = today;
 
 });
+/* MONTHLY BOOKINGS */
+/* MONTHLY BOOKINGS */
+function openMonthlyBookings(){
+
+    document.getElementById("dashboardPanel").style.display="none";
+    document.getElementById("availabilityPanel").style.display="none";
+    document.getElementById("myBookingsPanel").style.display="none";
+    document.getElementById("adminBookingsPanel").style.display="none";
+
+    document.getElementById("monthlyBookingsPanel").style.display="block";
+
+    // ⭐ auto select current month
+    const monthInput = document.getElementById("monthYear");
+
+    if(monthInput && !monthInput.value){
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2,'0');
+
+        monthInput.value = `${year}-${month}`;
+    }
+
+    // ⭐ auto load bookings
+    loadMonthlyBookings();
+}
+
+// MONTLY DATA TO LOAD DIRECTLY FROM THE MONTH AND YEAR PICKER JAVASCRIPT CODE 
+/*async function loadMonthlyBookings(){
+
+    const monthYear = document.getElementById("monthYear").value;
+
+    if(!monthYear){
+        alert("Select month");
+        return;
+    }
+
+    const format = monthYear; // 2026-03
+
+    const res = await fetch("/monthly_bookings?month=" + format);
+    const data = await res.json();
+
+    const list = document.getElementById("monthlyTableBody");
+    list.innerHTML = "";
+
+    if(data.length === 0){
+        list.innerHTML = "<tr><td colspan='6'>No bookings found</td></tr>";
+        return;
+    }
+    const today = new Date().toISOString().split("T")[0];
+    data.forEach(b => {
+
+        list.innerHTML += `
+        <tr>
+            <td>${b.trn_date.split(" ")[0]}</td>
+            <td>${b.hall}</td>
+            <td>${b.start_time.substring(0,5)}</td>
+            <td>${b.end_time.substring(0,5)}</td>
+            <td>${b.purpose}</td>
+            <td>${b.status}</td>
+        </tr>
+        `;
+        console.log("Monthly bookings loading...");
+    });
+
+}*/
+
+
+
+async function loadMonthlyBookings(month){
+
+    if(!month){
+        const date = document.getElementById("myBookingDate").value;
+        month = date.substring(0,7);
+    }
+
+    const res = await fetch("/monthly_bookings?month=" + month);
+    const data = await res.json();
+
+    const list = document.getElementById("monthlyTableBody");
+    list.innerHTML = "";
+
+    if(data.length === 0){
+        list.innerHTML = "<tr><td colspan='6'>No bookings found</td></tr>";
+        return;
+    }
+
+    data.forEach(b => {
+
+        const d = b.trn_date.split(" ")[0].split("-");
+        const formattedDate = `${d[2]}-${d[1]}-${d[0]}`;
+        list.innerHTML += `
+        <tr>
+            <td>${formattedDate}</td>
+            <td>${b.hall}</td>
+            <td>${b.start_time.substring(0,5)}</td>
+            <td>${b.end_time.substring(0,5)}</td>
+            <td>${b.purpose}</td>
+            <td>${b.status}</td>
+        </tr>
+        `;
+
+    });
+
+}
+
+
+
+function loadFromDate(){
+
+    const date = document.getElementById("myBookingDate").value;
+    if(!date) return;
+
+    const month = date.substring(0,7);
+
+    loadMyBookings();                     // daily bookings
+    
+    loadMonthlyBookings();                // monthly bookings
+}
+document.getElementById("myBookingDate")
+.addEventListener("change", loadFromDate);
+
+window.addEventListener("DOMContentLoaded", () => {
+
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("myBookingDate").value = today;
+
+    loadFromDate();
+
+});
+

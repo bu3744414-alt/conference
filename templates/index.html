@@ -26,10 +26,10 @@
             <li onclick="openModal()">Book Hall</li>
             <li onclick="loadMyBookings()">My Bookings</li>
             <li onclick="openAvailability()">Availability</li>
-            
+            <!--<li onclick="openMonthlyBookings()">Monthly Bookings</li>-->
             {% if role == 'admin' %}
             <li onclick="loadAdminBookings()">All Bookings</li>
-            <li onclick="openSettings()">Settings</li>
+            <!--<li onclick="openSettings()">Settings</li>-->
             {% endif %}
             <li><a href="/logout">Logout</a></li>
         </ul>
@@ -40,7 +40,7 @@
 
 
 <div class="header">
-    <h1>Conference Hall Booking</h1>
+    <h1 class="header-title">Conference Hall Booking</h1>
 
     <div class="user-info" onclick="toggleUserMenu()">👤 {{ user }}</div>
 
@@ -48,6 +48,8 @@
         <p><b>User:</b> {{ user }}</p>
         <p><b>Department:</b> {{ dept }}</p>
         <p><b>Role:</b> {{ role }}</p>
+
+        <a href="/logout" class="menu-logout">Logout</a>
     </div>
 </div>
 
@@ -61,7 +63,7 @@
         <!-- FIRST FLOOR BIG -->
         {% if hall[0] == 101 %}
         <div class="room-card">
-            <img src="{{ url_for('static', filename='room/Big_conference-hall-1.jpeg') }}">
+            <img src="{{ url_for('static', filename='room/Big_conference-hall-1.jpeg') }}?v=2">
             <div class="room-info">
                 <h3>{{ hall[1] }}</h3>
                 <p>1st Floor</p>
@@ -74,7 +76,7 @@
         <!-- FIRST FLOOR SMALL -->
         {% if hall[0] == 102 %}
         <div class="room-card">
-            <img src="{{ url_for('static', filename='room/Small_conference-hall-1.jpeg') }}">
+            <img src="{{ url_for('static', filename='room/Small_conference-hall-1.jpeg') }}?v=2">
             <div class="room-info">
                 <h3>{{ hall[1] }}</h3>
                 <p>1st Floor</p>
@@ -100,7 +102,7 @@
         <!-- THIRD FLOOR -->
         {% if hall[0] == 301 %}
         <div class="room-card">
-            <img src="{{ url_for('static', filename='room/conference-hall-3rd.jpeg') }}">
+            <img src="{{ url_for('static', filename='room/conference-hall-3rd.jpeg') }}?v=2">
             <div class="room-info">
                 <h3>{{ hall[1] }}</h3>
                 <p>3rd Floor</p>
@@ -113,7 +115,7 @@
         <!-- FOURTH FLOOR -->
         {% if hall[0] == 401 %}
         <div class="room-card">
-            <img src="{{ url_for('static', filename='room/conference-hall-4th.jpeg') }}">
+            <img src="{{ url_for('static', filename='room/conference-hall-4th.jpeg') }}?v=2">
             <div class="room-info">
                 <h3>{{ hall[1] }}</h3>
                 <p>4th Floor</p>
@@ -136,15 +138,47 @@
     </div>
 <!-- MY BOOKINGS PANEL -->
 
-    <div id="myBookingsPanel" style="display:none; margin-top:30px;">
-        <h2>My Bookings</h2>
-        <div class="date-filter">
-            <input type="date" id="myBookingDate">
-            <button onclick="loadMyBookings()">OK</button>
-        </div>
+    <!-- MY BOOKINGS PANEL -->
 
-        <div id="myBookingsList" class="booking-list"></div>
+    <div id="myBookingsPanel" style="display:none; margin-top:30px;">
+    <h2>My Bookings</h2>
+
+    <div class="date-filter" style="display:flex; gap:10px; align-items:center;">
+
+        <!-- DATE PICKER (MAIN CONTROL) -->
+        <input type="date" id="myBookingDate">
+        <!--<button onclick="loadFromDate()">OK</button>-->
+
+        <!-- OPTIONAL MONTH PICKER 
+        <input type="month" id="monthYear">
+        <button onclick="loadMonthlyBookings()">OK</button>-->
+
     </div>
+
+    <div id="myBookingsList" class="booking-list"></div>
+
+        <!-- MONTHLY TABLE BELOW -->
+        <h2 style="margin-top:30px;">Monthly Bookings</h2>
+
+        <table id="monthlyTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Hall</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Purpose</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody id="monthlyTableBody"></tbody>
+
+        </table>
+
+
+    </div>
+
 <!-- ADMIN BOOKINGS PANEL -->
     <div id="adminBookingsPanel" style="display:none; margin-top:30px;">
         <h2>All Department Bookings</h2>
@@ -155,6 +189,36 @@
         
         <div id="adminBookingsList" class="booking-list"></div>
     </div>
+
+    <!-- MONTHLY BOOKINGS PANEL 
+    <div id="monthlyBookingsPanel" style="display:none; margin-top:30px;">
+    <h2>Monthly Bookings</h2>
+
+    <div class="date-filter">
+        <input type="month" id="monthYear">
+        <button onclick="loadMonthlyBookings()">OK</button>
+    </div>
+
+    <div id="monthlyBookingsList">
+
+    <table id="monthlyTable">
+    <thead>
+    <tr>
+    <th>Date</th>
+    <th>Hall</th>
+    <th>Start Time</th>
+    <th>End Time</th>
+    <th>Purpose</th>
+    <th>Status</th>
+    </tr>
+    </thead>
+
+    <tbody id="monthlyTableBody"></tbody>
+
+    </table>
+
+    </div>-->
+</div>
 
 </div>
 

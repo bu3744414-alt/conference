@@ -1,12 +1,12 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, render_template, redirect
 from database.db import get_connection
-
+from datetime import datetime, date
 booking = Blueprint("booking", __name__)
 
 
 
 # ---------------- AVAILABILITY ----------------
-@app.route('/availability')
+@booking.route('/availability')
 def availability():
     hall = request.args.get('hall')
     date_val = request.args.get('date')
@@ -46,7 +46,7 @@ def availability():
 #--------Checking-------------
 
 # ---------------- BOOK ----------------
-@app.route('/book', methods=['POST'])
+@booking.route('/book', methods=['POST'])
 def book():
     if not session.get('user'):
         return jsonify(status="error", message="Login expired")
@@ -70,11 +70,13 @@ def book():
 
     # 🔍 Check for time conflict
     cursor.execute("""
-        SELECT start_time, end_time, department, empname
-        FROM booking_transactions
-        WHERE conference_id=? AND trn_date=?
-        AND (? < end_time AND ? > start_time)
-    """, (hall, meeting_date, start, end))
+    SELECT start_time, end_time, department, empname
+    FROM booking_transactions
+    WHERE conference_id=? 
+    AND trn_date=?
+    AND status='Booked'
+    AND (? < end_time AND ? > start_time)
+    """,(hall, meeting_date, start, end))
 
     # office hours validation
     if end <= start:
@@ -82,10 +84,10 @@ def book():
         return jsonify(status="error",
                        message="End time must be after start time")
 
-    if start < "09:00" or end > "18:00":
+    if start < "09:00" or end > "20:00":
         conn.close()
         return jsonify(status="error",
-                       message="Booking allowed only between 9 AM and 6 PM")
+                       message="Booking allowed only between 9 AM and 8 PM")
 
     conflict = cursor.fetchone()
 
@@ -131,7 +133,7 @@ def book():
 
 #-------HALL STATS
 
-@app.route("/hall_stats")
+@booking.route("/hall_stats")
 def hall_stats():
 
     conn = get_connection()
@@ -155,7 +157,7 @@ def hall_stats():
 
 
 
-@app.route('/reschedule/<int:booking_id>', methods=['POST'])
+@booking.route('/reschedule/<int:booking_id>', methods=['POST'])
 def reschedule(booking_id):
 
     if not session.get('user'):
@@ -173,10 +175,10 @@ def reschedule(booking_id):
         conn.close()
         return jsonify(status="error", message="End time must be after start time")
 
-    if new_start < "09:00" or new_end > "18:00":
+    if new_start < "09:00" or new_end > "20:00":
         conn.close()
         return jsonify(status="error",
-        message="Booking allowed only between 9 AM and 6 PM")
+        message="Booking allowed only between 9 AM and 8 PM")
 
     cursor.execute("""
         UPDATE booking_transactions
@@ -195,7 +197,7 @@ def reschedule(booking_id):
     return jsonify(status="success", message="Booking rescheduled successfully")
 
 
-@app.route("/my_bookings")
+@booking.route("/my_bookings")
 def my_bookings():
 
     if not session.get("user"):
@@ -303,3 +305,52 @@ def my_bookings():
         })
 
     return jsonify(bookings)
+
+
+@booking.route('/monthly_bookings')
+def monthly_bookings():
+
+    if not session.get('user'):
+        return jsonify([])
+
+    month = request.args.get("month")   # example: 2026-03
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT 
+        bt.TRN_DATE,
+        cm.conference_name,
+        bt.start_time,
+        bt.end_time,
+        bt.purpose,
+        bt.status
+    FROM booking_transactions bt
+    JOIN conference_master cm 
+        ON bt.conference_id = cm.conference_id
+    WHERE bt.empno = ?
+        AND bt.TRN_DATE LIKE ?
+    ORDER BY 
+        bt.TRN_DATE ASC,
+        bt.conference_id ASC,
+        bt.start_time ASC
+    """, (session['empno'], month + "%"))
+
+    rows = cur.fetchall()
+
+    conn.close()
+
+    data = []
+
+    for r in rows:
+        data.append({
+            "trn_date": str(r[0]),
+            "hall": r[1],
+            "start_time": str(r[2]),
+            "end_time": str(r[3]),
+            "purpose": r[4],
+            "status": r[5]
+        })
+
+    return jsonify(data)

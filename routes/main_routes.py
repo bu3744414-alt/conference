@@ -6,7 +6,7 @@ from services.master_service import get_halls, get_departments
 main = Blueprint("main", __name__)
 
 
-@app.route('/')
+@main.route('/')
 def home():
 
     if not session.get('user'):

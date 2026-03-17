@@ -57,7 +57,7 @@ async function submitBooking(){
     
     // company working hours
 const officeStart = "09:00";
-const officeEnd = "18:00";
+const officeEnd = "20:00";
 
 // basic validation
 if(!start || !end){
@@ -73,7 +73,7 @@ if(end <= start){
 
 // prevent outside office hours
 if(start < officeStart || end > officeEnd){
-    showPopup("Error","Booking allowed only between 9:00 AM and 6:00 PM");
+    showPopup("Error","Booking allowed only between 9:00 AM and 8:00 PM");
     return;
 }
 

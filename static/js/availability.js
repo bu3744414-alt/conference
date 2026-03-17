@@ -11,7 +11,13 @@ function openAvailability(){
     loadHallCards();
 }
 
-
+const hallNames = {
+    "101": "First Floor Conference",
+    "102": "First Floor Conference Small",
+    "201": "Second Floor Conference",
+    "301": "Third Floor Conference",
+    "401": "Fourth Floor Conference"
+};
 async function loadHallCards(){
 
     const res = await fetch("/hall_stats");
@@ -24,8 +30,16 @@ async function loadHallCards(){
 
         const card = document.createElement("div");
         card.className = "availability-card";
-        card.innerHTML = `<b>${hall}</b>`;
-        card.onclick = () => loadSlots(hall)
+        card.innerHTML = `<b>${hallNames[hall] || hall}</b>`;
+        card.onclick = () => {
+
+        document.querySelectorAll(".availability-card")
+        .forEach(c => c.classList.remove("active"));
+
+        card.classList.add("active");
+
+        loadSlots(hall);
+    }
 
         container.appendChild(card);
     });
@@ -49,8 +63,10 @@ async function loadSlots(hall){
     let endDay   = 18 * 60;  // 18:00
 
     function toMinutes(t){
-        let [h,m] = t.split(":").map(Number);
-        return h*60+m;
+
+    const time = new Date(`1970-01-01T${t}`);
+
+    return time.getHours()*60 + time.getMinutes();
     }
 
     function toTime(m){
@@ -60,7 +76,7 @@ async function loadSlots(hall){
     }
 
     if(slots.length === 0){
-        html += `<div class="free-card">Fully Available</div>`;
+        html += `<div class="free-card">Available 09:00 - 18:00</div>`;
     } else {
 
         let lastEnd = startDay;
@@ -107,10 +123,4 @@ async function loadSlots(hall){
     box.innerHTML = html;
 }
 
-const hallNames = {
-    "101": "First Floor Conference",
-    "102": "First Floor Conference Small",
-    "201": "Second Floor Conference",
-    "301": "Third Floor Conference",
-    "401": "Fourth Floor Conference"
-};
+

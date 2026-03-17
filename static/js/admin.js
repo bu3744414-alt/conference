@@ -146,7 +146,7 @@ function closeCancel(){
 
 
 
-
+/*
 async function addHall(){
     const name = document.getElementById("newHallName").value;
     if(!name) return alert("Enter hall name");
@@ -169,7 +169,7 @@ async function deleteHall(name){
 }
 
 /* SETTINGS PANEL */
-function openSettings(){
+/*function openSettings(){
     document.getElementById("settingsModal").style.display = "flex";
 }
 
@@ -185,10 +185,10 @@ function openExport(){
 function closeExport(){
     document.getElementById("exportModal").style.display = "none";
 }
-
+*/
 
 /* EXPORTBOOKINGS  */
-async function exportReport(){
+/*async function exportReport(){
 
     const start = document.getElementById("exportStart").value;
     const end = document.getElementById("exportEnd").value;
@@ -226,7 +226,7 @@ function openRenameModal(){
 
 function closeRenameModal(){
     document.getElementById("renameModal").style.display = "none";
-}
+} */
 
 async function loadHalls(){
 

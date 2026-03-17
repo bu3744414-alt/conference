@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify, session, send_file
+from datetime import datetime, date
 from database.db import get_connection
-
+import pandas as pd
 admin = Blueprint("admin", __name__)
 
 
 
-@app.route("/admin_bookings")
+@admin.route("/admin_bookings")
 def admin_bookings():
 
     if session.get("role") != "admin":
@@ -92,7 +93,7 @@ ORDER BY start_time
     return jsonify(bookings)
 
 # ---------------- ADMIN CANCEL ----------------
-@app.route('/cancel/<int:booking_id>', methods=['POST'])
+@admin.route('/cancel/<int:booking_id>', methods=['POST'])
 def cancel(booking_id):
 
     if session.get('role') != 'admin':
@@ -126,7 +127,7 @@ def cancel(booking_id):
 
 # ---------------- MY BOOKINGS ----------------
 #------Add new hall--------
-@app.route("/add_hall", methods=["POST"])
+'''@admin.route("/add_hall", methods=["POST"])
 def add_hall():
     if session.get('role') != 'admin':
         return jsonify(status="error", message="Unauthorized")
@@ -143,7 +144,7 @@ def add_hall():
     return jsonify(status="success", message="Hall added")
 
 #-----delete hall--------
-@app.route("/delete_hall", methods=["POST"])
+@admin.route("/delete_hall", methods=["POST"])
 def delete_hall():
 
     if session.get('role') != 'admin':
@@ -165,7 +166,7 @@ def delete_hall():
     return jsonify(status="success", message="Hall deleted")
 
 # ---------------- EXPORT BOOKINGS ----------------
-@app.route("/export_excel", methods=["POST"])
+@admin.route("/export_excel", methods=["POST"])
 def export_excel():
 
     if session.get('role') != 'admin':
@@ -205,6 +206,6 @@ def export_excel():
         as_attachment=True,
         download_name="bookings.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    )'''
 #---hall floor grouping 
 

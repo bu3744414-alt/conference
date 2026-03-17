@@ -1,7 +1,9 @@
+from flask import Blueprint, request, jsonify, session
+from database.db import get_connection
 
+update_halls_bp = Blueprint("update_halls_bp", __name__)
 
-
-@app.route('/update_halls', methods=['POST'])
+@update_halls_bp.route('/update_halls', methods=['POST'])
 def update_halls():
 
     if session.get('role') != 'admin':
