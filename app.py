@@ -6,6 +6,9 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = "secret123"
 
+# Application is created by AADI SAI NEEKSHAY(IT Intern) if any software wants to be created or maintained contact:aadisaineekshay@gmail.com
+
+
 # import all blueprints
 from routes.auth_routes import auth
 from routes.booking_routes import booking
@@ -22,12 +25,5 @@ app.register_blueprint(update_halls_bp)
 if __name__ == "__main__":
     app.run(debug=True)
 
-import os
 
-print("CURRENT DIR:", os.getcwd())
-print("STATIC EXISTS:", os.path.exists("static"))
-print("ROOM EXISTS:", os.path.exists("static/room"))
-
-if os.path.exists("static"):
-    print("STATIC CONTENT:", os.listdir("static"))
-# Application is created by AADI SAI NEEKSHAY(IT Intern)
+# Application is created by AADI SAI NEEKSHAY(IT Intern) if any software wants to be created or maintained contact:aadisaineekshay@gmail.com

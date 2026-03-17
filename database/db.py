@@ -1,11 +1,14 @@
 import pyodbc
-# ---------------- DATABASE INIT ----------------
-# ---------------- SQL CONNECTIONS ----------------
+
 def get_connection():
     conn = pyodbc.connect(
-        "DRIVER={SQL Server};"
-        "SERVER=INHYD-L-5004;"
-        "DATABASE=Conference;"
-        "Trusted_Connection=yes;"
+        "Driver={ODBC Driver 18 for SQL Server};"
+        "Server=tcp:conference-sql-server.database.windows.net,1433;"
+        "Database=conference_db;"
+        "Uid=sqladmin;"
+        "Pwd=Neekshay642;"
+        "Encrypt=yes;"
+        "TrustServerCertificate=no;"
+        "Connection Timeout=30;"
     )
     return conn
