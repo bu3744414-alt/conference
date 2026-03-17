@@ -1,5 +1,5 @@
 Flask
-pyodbc
+pymssql
 gunicorn
 pandas
 openpyxl
