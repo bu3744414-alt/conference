@@ -7,7 +7,8 @@ app = Flask(__name__)
 app.secret_key = "secret123"
 
 # Application is created by AADI SAI NEEKSHAY(IT Intern) if any software wants to be created or maintained contact:aadisaineekshay@gmail.com
-
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 # import all blueprints
 from routes.auth_routes import auth
