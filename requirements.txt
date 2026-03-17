@@ -1,5 +1,5 @@
-Flask
-pymssql
-gunicorn
-pandas
-openpyxl
+Flask==3.0.0
+gunicorn==21.2.0
+pymssql==2.3.13
+pandas==2.2.2
+openpyxl==3.1.2

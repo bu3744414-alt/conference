@@ -1,15 +1,17 @@
-import pyodbc
+import pymssql
 import os
 
 def get_connection():
-    conn = pyodbc.connect(
-        "Driver={ODBC Driver 18 for SQL Server};"
-        "Server=conference-sql-server.database.windows.net;"
-        "Database=conference_db;"
-        "UID=sqladmin;"
-        "PWD=" + os.environ.get("Neekshay642") + ";"
-        "Encrypt=yes;"
-        "TrustServerCertificate=no;"
-        "Connection Timeout=30;"
+    password = os.environ.get("DB_PASSWORD")
+
+    if not password:
+        raise Exception("DB_PASSWORD not set")
+
+    conn = pymssql.connect(
+        server="conference-sql-server.database.windows.net",
+        user="sqladmin",
+        password=password,
+        database="conference_db"
     )
+
     return conn
