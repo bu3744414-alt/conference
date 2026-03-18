@@ -13,14 +13,18 @@ def home():
         return redirect('/login')
 
     conn = get_connection()
+    cursor = conn.cursor()
 
-    bookings = conn.execute("""
+    cursor.execute("""
         SELECT empname, conference_id, department, trn_date,
                start_time, end_time, status, purpose
         FROM booking_transactions
         ORDER BY trn_date, start_time
-    """).fetchall()
+    """)
 
+    bookings = cursor.fetchall()
+
+    cursor.close()
     conn.close()
 
     halls = get_halls()
