@@ -20,8 +20,8 @@ def availability():
         department,
         empname
         FROM booking_transactions
-        WHERE conference_id=? 
-        AND (CASE WHEN rescheduled = 1 THEN rescheduled_date ELSE trn_date END)=?
+        WHERE conference_id=%s 
+        AND (CASE WHEN rescheduled = 1 THEN rescheduled_date ELSE trn_date END)=%s
         AND status='Booked'
     """,(hall,date_val)).fetchall()
 
@@ -72,10 +72,10 @@ def book():
     cursor.execute("""
     SELECT start_time, end_time, department, empname
     FROM booking_transactions
-    WHERE conference_id=? 
-    AND trn_date=?
+    WHERE conference_id=%s 
+    AND trn_date=%s
     AND status='Booked'
-    AND (? < end_time AND ? > start_time)
+    AND (%s < end_time AND %s > start_time)
     """,(hall, meeting_date, start, end))
 
     # office hours validation
@@ -110,7 +110,7 @@ def book():
     INSERT INTO booking_transactions
     (empno, empname, conference_id, department, trn_date,
     start_time, end_time, booked_on, purpose, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """,(
     session['empno'],
     session['user'],
@@ -183,12 +183,12 @@ def reschedule(booking_id):
     cursor.execute("""
         UPDATE booking_transactions
         SET
-        rescheduled_date=?,
-        re_start_time=?,
-        re_end_time=?,
-        resch_reason=?,
+        rescheduled_date=%s,
+        re_start_time=%s,
+        re_end_time=%s,
+        resch_reason=%s,
         rescheduled=1
-        WHERE booking_id=?
+        WHERE booking_id=%s
     """,(new_date,new_start,new_end,reason,booking_id))
 
     conn.commit()
@@ -239,13 +239,13 @@ def my_bookings():
             ISNULL(rescheduled,0)
 
         FROM booking_transactions
-        WHERE (empno=? OR empname=?)
+        WHERE (empno=%s OR empname=%s)
         AND CAST(
             CASE 
                 WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
                 ELSE trn_date
             END AS DATE
-        ) = ?
+        ) = %s
 
         ORDER BY start_time
     """,(session["empno"], session["user"], selected_date)).fetchall()
@@ -281,7 +281,7 @@ def my_bookings():
                 ISNULL(rescheduled,0)
 
             FROM booking_transactions
-            WHERE (empno=? OR empname=?)
+            WHERE (empno=%s OR empname=%s)
             ORDER BY trn_date, start_time
         """,(session["empno"],session["user"])).fetchall()
 
@@ -329,8 +329,8 @@ def monthly_bookings():
     FROM booking_transactions bt
     JOIN conference_master cm 
         ON bt.conference_id = cm.conference_id
-    WHERE bt.empno = ?
-        AND bt.TRN_DATE LIKE ?
+    WHERE bt.empno = %s
+        AND bt.TRN_DATE LIKE %s
     ORDER BY 
         bt.TRN_DATE ASC,
         bt.conference_id ASC,

@@ -19,7 +19,7 @@ def update_halls():
     for name in request.form.values():
         cursor.execute("""
             INSERT INTO conference_master (conference_id, conference_name, status)
-            VALUES (?, ?, 'A')
+            VALUES (%s, %s, 'A')
         """, (name, name))
 
     conn.commit()

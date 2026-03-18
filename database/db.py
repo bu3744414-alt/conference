@@ -2,16 +2,20 @@ import pymssql
 import os
 
 def get_connection():
-    password = os.environ.get("DB_PASSWORD")
+    server = os.getenv("DB_SERVER", "conference-sql-server.database.windows.net")
+    database = os.getenv("DB_NAME", "conference_db")
+    user = os.getenv("DB_USER", "sqladmin")
+    password = os.getenv("DB_PASSWORD")
 
     if not password:
-        raise Exception("DB_PASSWORD not set")
+        raise Exception("DB_PASSWORD not set in Azure App Settings")
 
     conn = pymssql.connect(
-        server="conference-sql-server.database.windows.net",
-        user="sqladmin",
+        server=server,
+        user=user,
         password=password,
-        database="conference_db"
+        database=database,
+        port=1433
     )
 
     return conn
