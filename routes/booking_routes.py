@@ -13,7 +13,7 @@ def availability():
 
     conn = get_connection()
     cursor = conn.cursor()
-    rows = cursor.execute("""
+    cursor.execute("""
         SELECT
         CASE WHEN rescheduled = 1 THEN re_start_time ELSE start_time END,
         CASE WHEN rescheduled = 1 THEN re_end_time ELSE end_time END,
@@ -23,8 +23,8 @@ def availability():
         WHERE conference_id=%s 
         AND (CASE WHEN rescheduled = 1 THEN rescheduled_date ELSE trn_date END)=%s
         AND status='Booked'
-    """,(hall,date_val)).fetchall()
-
+    """,(hall,date_val))
+    rows = cursor.fetchall()
     conn.close()
 
     data = []
@@ -208,7 +208,7 @@ def my_bookings():
     conn = get_connection()
     cursor = conn.cursor()
     if selected_date:
-        rows = cursor.execute("""
+        cursor.execute("""
         SELECT 
             booking_id,
             conference_id,
@@ -249,9 +249,9 @@ def my_bookings():
 
         ORDER BY start_time
     """,(session["empno"], session["user"], selected_date)).fetchall()
-
+        rows = cursor.fetchall()
     else:
-        rows = cursor.execute("""
+        cursor.execute("""
             SELECT 
                 booking_id,
                 conference_id,
@@ -284,7 +284,8 @@ def my_bookings():
             WHERE (empno=%s OR empname=%s)
             ORDER BY trn_date, start_time
         """,(session["empno"],session["user"])).fetchall()
-
+    
+        rows = cursor.fetchall()
     
 
     conn.close()
