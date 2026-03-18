@@ -18,8 +18,8 @@ def admin_bookings():
         selected_date = date.today().isoformat()
 
     conn = get_connection()
-
-    rows = conn.execute("""
+    cursor = conn.cursor()
+    rows = cursor.execute("""
 SELECT 
 t.booking_id,
 m.conference_name,
@@ -135,7 +135,8 @@ def add_hall():
     name = request.form.get("name")
 
     conn = get_connection()
-    conn.execute("""INSERT INTO conference_master (conference_id, conference_name, status)
+    cursor = conn.cursor()
+    cursor.execute("""INSERT INTO conference_master (conference_id, conference_name, status)
         VALUES (%s, %s, 'A')
     """,(name, name))
     conn.commit()
@@ -153,8 +154,8 @@ def delete_hall():
     name = request.form.get("name")
 
     conn = get_connection()
-
-    conn.execute("""
+    cursor = conn.cursor()
+    cursor.execute("""
         UPDATE conference_master
         SET status='I'
         WHERE conference_id=%s

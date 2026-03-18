@@ -12,8 +12,8 @@ def availability():
     date_val = request.args.get('date')
 
     conn = get_connection()
-
-    rows = conn.execute("""
+    cursor = conn.cursor()
+    rows = cursor.execute("""
         SELECT
         CASE WHEN rescheduled = 1 THEN re_start_time ELSE start_time END,
         CASE WHEN rescheduled = 1 THEN re_end_time ELSE end_time END,
@@ -137,14 +137,14 @@ def book():
 def hall_stats():
 
     conn = get_connection()
-
-    halls = [row[0] for row in conn.execute("""
+    cursor = conn.cursor()
+    halls = [row[0] for row in cursor.execute("""
         SELECT conference_id
         FROM conference_master
         WHERE status='A'
     """)]
 
-    counts = dict(conn.execute("""
+    counts = dict(cursor.execute("""
         SELECT conference_id, COUNT(*)
         FROM booking_transactions
         GROUP BY conference_id
@@ -206,9 +206,9 @@ def my_bookings():
     selected_date = request.args.get("date")
 
     conn = get_connection()
-
+    cursor = conn.cursor()
     if selected_date:
-        rows = conn.execute("""
+        rows = cursor.execute("""
         SELECT 
             booking_id,
             conference_id,
@@ -251,7 +251,7 @@ def my_bookings():
     """,(session["empno"], session["user"], selected_date)).fetchall()
 
     else:
-        rows = conn.execute("""
+        rows = cursor.execute("""
             SELECT 
                 booking_id,
                 conference_id,
