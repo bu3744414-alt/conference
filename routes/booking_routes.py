@@ -137,18 +137,24 @@ def book():
 def hall_stats():
 
     conn = get_connection()
-    cursor = conn.cursor()
-    halls = [row[0] for row in cursor.execute("""
-        SELECT conference_id
-        FROM conference_master
-        WHERE status='A'
-    """)]
+    cursor = conn.cursor()# --- GET HALL IDS ---
+    cursor.execute("""
+    SELECT conference_id
+    FROM conference_master
+    WHERE status='A'
+    """)
 
-    counts = dict(cursor.execute("""
-        SELECT conference_id, COUNT(*)
-        FROM booking_transactions
-        GROUP BY conference_id
-    """).fetchall())
+    halls = [row[0] for row in cursor.fetchall()]
+
+
+# --- GET BOOKING COUNTS ---
+    cursor.execute("""
+    SELECT conference_id, COUNT(*)
+    FROM booking_transactions
+    GROUP BY conference_id
+    """)
+
+    counts = dict(cursor.fetchall())
 
     conn.close()
 
@@ -204,10 +210,59 @@ def my_bookings():
         return jsonify([])
 
     selected_date = request.args.get("date")
+    
+    
 
     conn = get_connection()
     cursor = conn.cursor()
     if selected_date:
+
+        if session.get("role") == "admin":
+
+            cursor.execute("""
+            SELECT 
+            booking_id,
+            conference_id,
+
+            CASE 
+                WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
+                ELSE trn_date
+            END AS trn_date,
+
+            CASE 
+                WHEN ISNULL(rescheduled,0)=1 THEN re_start_time
+                ELSE start_time
+            END AS start_time,
+
+            CASE 
+                WHEN ISNULL(rescheduled,0)=1 THEN re_end_time
+                ELSE end_time
+            END AS end_time,
+
+            status,
+
+            CASE
+                WHEN ISNULL(rescheduled,0)=1 THEN resch_reason
+                ELSE purpose
+            END AS purpose,
+
+            admin_remarks,
+            ISNULL(rescheduled,0)
+
+        FROM booking_transactions
+
+        WHERE CAST(
+            CASE 
+                WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
+                ELSE trn_date
+            END AS DATE
+        ) = %s
+
+        ORDER BY start_time
+        """, (selected_date,))
+
+    else:
+
         cursor.execute("""
         SELECT 
             booking_id,
@@ -239,6 +294,7 @@ def my_bookings():
             ISNULL(rescheduled,0)
 
         FROM booking_transactions
+
         WHERE (empno=%s OR empname=%s)
         AND CAST(
             CASE 
@@ -248,44 +304,9 @@ def my_bookings():
         ) = %s
 
         ORDER BY start_time
-    """,(session["empno"], session["user"], selected_date)).fetchall()
-        rows = cursor.fetchall()
-    else:
-        cursor.execute("""
-            SELECT 
-                booking_id,
-                conference_id,
+        """, (session["empno"], session["user"], selected_date))
 
-                CASE 
-                    WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
-                    ELSE trn_date
-                END AS trn_date,
-
-                CASE 
-                    WHEN ISNULL(rescheduled,0)=1 THEN re_start_time
-                    ELSE start_time
-                END AS start_time,
-
-                CASE 
-                    WHEN ISNULL(rescheduled,0)=1 THEN re_end_time
-                    ELSE end_time
-                END AS end_time,
-
-                status,
-
-                CASE
-                    WHEN ISNULL(rescheduled,0)=1 THEN resch_reason
-                    ELSE purpose
-                END AS purpose,
-                admin_remarks,
-                ISNULL(rescheduled,0)
-
-            FROM booking_transactions
-            WHERE (empno=%s OR empname=%s)
-            ORDER BY trn_date, start_time
-        """,(session["empno"],session["user"])).fetchall()
-    
-        rows = cursor.fetchall()
+    rows = cursor.fetchall()
     
 
     conn.close()

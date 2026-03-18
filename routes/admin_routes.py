@@ -19,7 +19,7 @@ def admin_bookings():
 
     conn = get_connection()
     cursor = conn.cursor()
-    rows = cursor.execute("""
+    cursor.execute("""
 SELECT 
 t.booking_id,
 m.conference_name,
@@ -68,7 +68,8 @@ CASE
 END = %s
 
 ORDER BY start_time
-""",(selected_date,)).fetchall()
+""",(selected_date,))
+    rows = cursor.fetchall()
 
     conn.close()
 
