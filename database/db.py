@@ -1,5 +1,8 @@
 import pymssql
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # 👈 load .env file
 
 def get_connection():
     server = os.getenv("DB_SERVER", "conference-sql-server.database.windows.net")

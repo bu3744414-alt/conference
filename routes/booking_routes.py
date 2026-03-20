@@ -202,7 +202,7 @@ def reschedule(booking_id):
 
     return jsonify(status="success", message="Booking rescheduled successfully")
 
-
+#Shows all bookings for only the logged in users 
 @booking.route("/my_bookings")
 def my_bookings():
 
@@ -210,48 +210,13 @@ def my_bookings():
         return jsonify([])
 
     selected_date = request.args.get("date")
+    if not selected_date:
+        selected_date = str(date.today())
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    if session.get("role") == "admin":
-
-        cursor.execute("""
-        SELECT 
-            booking_id,
-            conference_id,
-            CASE 
-                WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
-                ELSE trn_date
-            END,
-            CASE 
-                WHEN ISNULL(rescheduled,0)=1 THEN re_start_time
-                ELSE start_time
-            END,
-            CASE 
-                WHEN ISNULL(rescheduled,0)=1 THEN re_end_time
-                ELSE end_time
-            END,
-            status,
-            CASE
-                WHEN ISNULL(rescheduled,0)=1 THEN resch_reason
-                ELSE purpose
-            END,
-            admin_remarks,
-            ISNULL(rescheduled,0)
-        FROM booking_transactions
-        WHERE CAST(
-            CASE 
-                WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
-                ELSE trn_date
-            END AS DATE
-        ) = %s
-        ORDER BY start_time
-        """, (selected_date,))
-
-    else:
-
-        cursor.execute("""
+    cursor.execute("""
         SELECT 
             booking_id,
             conference_id,
@@ -281,12 +246,11 @@ def my_bookings():
                 WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
                 ELSE trn_date
             END AS DATE
-        ) = %s
+        ) = CAST(%s AS DATE)
         ORDER BY start_time
-        """, (session["empno"], session["user"], selected_date))
+    """, (session["empno"], session["user"], selected_date))
 
     rows = cursor.fetchall()
-
     conn.close()
 
     bookings = []
@@ -306,6 +270,39 @@ def my_bookings():
 
     return jsonify(bookings)
 
+
+#shows the all bookings for the ADMIN at the All department bookings 
+@booking.route("/all_bookings")
+def all_bookings():
+
+    if not session.get("user") or session.get("role") != "admin":
+        return jsonify([])
+
+    selected_date = request.args.get("date")
+    if not selected_date:
+        selected_date = str(date.today())
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT 
+            booking_id,
+            conference_id,
+            trn_date,
+            start_time,
+            end_time,
+            status,
+            purpose
+        FROM booking_transactions
+        WHERE CAST(trn_date AS DATE) = CAST(%s AS DATE)
+        ORDER BY start_time
+    """, (selected_date,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return jsonify(rows)
 
 @booking.route('/monthly_bookings')
 def monthly_bookings():
