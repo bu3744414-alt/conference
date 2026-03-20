@@ -270,3 +270,19 @@ window.addEventListener("DOMContentLoaded", () => {
 
 });
 
+function openRescheduleModal(booking) {
+
+    // Set date
+    document.getElementById("rescheduleDate").value = booking.date;
+
+    // ✅ Set default times
+    document.getElementById("rescheduleStartTime").value = booking.start;
+    document.getElementById("rescheduleEndTime").value = booking.end;
+
+    // Clear reason (optional)
+    document.getElementById("rescheduleReason").value = "";
+
+    // Show modal
+    document.getElementById("rescheduleModal").style.display = "block";
+}
+
