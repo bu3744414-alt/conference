@@ -65,7 +65,7 @@ WHERE
 CASE 
     WHEN ISNULL(t.rescheduled,0)=1 THEN t.rescheduled_date 
     ELSE t.trn_date 
-END = %s
+END = ?
 
 ORDER BY start_time
 """,(selected_date,))
@@ -109,11 +109,11 @@ def cancel(booking_id):
         UPDATE booking_transactions
         SET
             status='Cancelled',
-            admin_id=%s,
-            admin_name=%s,
+            admin_id=?,
+            admin_name=?,
             admin_status='Cancelled',
-            admin_remarks=%s
-        WHERE booking_id=%s
+            admin_remarks=?
+        WHERE booking_id=?
     """,(
         session['empno'],   # admin id
         session['user'],    # admin name
@@ -138,7 +138,7 @@ def add_hall():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""INSERT INTO conference_master (conference_id, conference_name, status)
-        VALUES (%s, %s, 'A')
+        VALUES (?, ?, 'A')
     """,(name, name))
     conn.commit()
     conn.close()
@@ -159,7 +159,7 @@ def delete_hall():
     cursor.execute("""
         UPDATE conference_master
         SET status='I'
-        WHERE conference_id=%s
+        WHERE conference_id=?
     """,(name,))
 
     conn.commit()
@@ -193,7 +193,7 @@ def export_excel():
         status,
         rescheduled
     FROM booking_transactions
-    WHERE trn_date BETWEEN %s AND %s
+    WHERE trn_date BETWEEN ? AND ?
     ORDER BY trn_date, start_time
     """
 

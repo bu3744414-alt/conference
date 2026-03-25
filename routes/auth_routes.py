@@ -19,7 +19,7 @@ def login():
         cursor.execute("""
             SELECT employee_id, username, department, role, status_flg, password
             FROM Login_mas
-            WHERE CAST(employee_id AS VARCHAR(20))=%s OR LOWER(username)=LOWER(%s)
+            WHERE CAST(employee_id AS VARCHAR(20))=? OR LOWER(username)=LOWER(?)
         """,(login_input, login_input))
 
         user = new_func(cursor)
@@ -81,7 +81,7 @@ def change_password():
     cur.execute("""
         SELECT password
         FROM login_mas
-        WHERE employee_id = %s
+        WHERE employee_id = ?
         AND status_flg = 'A'
     """,(empno,))
 
@@ -101,8 +101,8 @@ def change_password():
 
     cur.execute("""
         UPDATE login_mas
-        SET password = %s
-        WHERE employee_id = %s
+        SET password = ?
+        WHERE employee_id = ?
     """,(new_password,empno))
 
     conn.commit()

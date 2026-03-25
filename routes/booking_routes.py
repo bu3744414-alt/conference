@@ -13,6 +13,7 @@ def availability():
 
     conn = get_connection()
     cursor = conn.cursor()
+
     cursor.execute("""
         SELECT
         CASE WHEN rescheduled = 1 THEN re_start_time ELSE start_time END,
@@ -20,10 +21,16 @@ def availability():
         department,
         empname
         FROM booking_transactions
-        WHERE conference_id=%s 
-        AND (CASE WHEN rescheduled = 1 THEN rescheduled_date ELSE trn_date END)=%s
+        WHERE conference_id=?
+        AND CAST(
+            CASE 
+                WHEN rescheduled = 1 THEN rescheduled_date 
+                ELSE trn_date 
+            END AS DATE
+        ) = CAST(? AS DATE)
         AND status='Booked'
     """,(hall,date_val))
+
     rows = cursor.fetchall()
     conn.close()
 
@@ -33,15 +40,9 @@ def availability():
         start = datetime.strptime(str(r[0])[:8], "%H:%M:%S").strftime("%I:%M %p")
         end = datetime.strptime(str(r[1])[:8], "%H:%M:%S").strftime("%I:%M %p")
 
-        data.append([
-            start,
-            end,
-            r[2],
-            r[3]
-        ])
+        data.append([start, end, r[2], r[3]])
 
     return jsonify(data)
-
 
 #--------Checking-------------
 
@@ -72,10 +73,10 @@ def book():
     cursor.execute("""
     SELECT start_time, end_time, department, empname
     FROM booking_transactions
-    WHERE conference_id=%s 
-    AND trn_date=%s
+    WHERE conference_id=? 
+    AND trn_date=?
     AND status='Booked'
-    AND (%s < end_time AND %s > start_time)
+    AND (? < end_time AND ? > start_time)
     """,(hall, meeting_date, start, end))
 
     # office hours validation
@@ -94,8 +95,8 @@ def book():
     if conflict:
         s, e, d, u = conflict
 
-        s = datetime.strptime(str(s)[:8], "%H:%M:%S").strftime("%I:%M %p")
-        e = datetime.strptime(str(e)[:8], "%H:%M:%S").strftime("%I:%M %p")
+        s = datetime.strptime(str(s)[:8], "%H:%M:?").strftime("%I:%M %p")
+        e = datetime.strptime(str(e)[:8], "%H:%M:?").strftime("%I:%M %p")
 
         conn.close()
         return jsonify(
@@ -110,7 +111,7 @@ def book():
     INSERT INTO booking_transactions
     (empno, empname, conference_id, department, trn_date,
     start_time, end_time, booked_on, purpose, status)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,(
     session['empno'],
     session['user'],
@@ -189,12 +190,12 @@ def reschedule(booking_id):
     cursor.execute("""
         UPDATE booking_transactions
         SET
-        rescheduled_date=%s,
-        re_start_time=%s,
-        re_end_time=%s,
-        resch_reason=%s,
+        rescheduled_date=?,
+        re_start_time=?,
+        re_end_time=?,
+        resch_reason=?,
         rescheduled=1
-        WHERE booking_id=%s
+        WHERE booking_id=?
     """,(new_date,new_start,new_end,reason,booking_id))
 
     conn.commit()
@@ -240,13 +241,13 @@ def my_bookings():
             admin_remarks,
             ISNULL(rescheduled,0)
         FROM booking_transactions
-        WHERE (empno=%s OR empname=%s)
+        WHERE (empno=? OR empname=?)
         AND CAST(
             CASE 
                 WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
                 ELSE trn_date
             END AS DATE
-        ) = CAST(%s AS DATE)
+        ) = CAST(? AS DATE)
         ORDER BY start_time
     """, (session["empno"], session["user"], selected_date))
 
@@ -295,7 +296,7 @@ def all_bookings():
             status,
             purpose
         FROM booking_transactions
-        WHERE CAST(trn_date AS DATE) = CAST(%s AS DATE)
+        WHERE CAST(trn_date AS DATE) = CAST(? AS DATE)
         ORDER BY start_time
     """, (selected_date,))
 
@@ -326,8 +327,8 @@ def monthly_bookings():
     FROM booking_transactions bt
     JOIN conference_master cm 
         ON bt.conference_id = cm.conference_id
-    WHERE bt.empno = %s
-        AND bt.TRN_DATE LIKE %s
+    WHERE bt.empno = ?
+        AND bt.TRN_DATE LIKE ?
     ORDER BY 
         bt.TRN_DATE ASC,
         bt.conference_id ASC,
