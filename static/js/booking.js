@@ -310,6 +310,10 @@ function closeReschedule(){
     document.getElementById("rescheduleModal").style.display = "none";
 }
 
+function closeReassign() {
+    document.getElementById("reassignModal").style.display = "none";
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 
   const form = document.getElementById("bookingForm");
