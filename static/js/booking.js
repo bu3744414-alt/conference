@@ -143,7 +143,14 @@ async function loadMyBookings(){
     bookings.forEach(b => {
 
         const hallName = hallNames[b.hall] || b.hall;
-        const statusText = b.rescheduled == 1 ? "Rescheduled" : b.status;
+        let statusText = b.status;
+
+        if(b.reassign == 1){
+            statusText = "Reassigned";
+        }
+        else if(b.rescheduled == 1){
+            statusText = "Rescheduled";
+        }
         const reasonText = b.rescheduled == 1 ? "Reschedule Reason" : "Purpose";
 
         // ⭐ cancellation reason
@@ -154,12 +161,26 @@ async function loadMyBookings(){
             <small>Cancellation Reason: ${b.cancel_reason}</small>
             `;
         }
+            let hallDisplay = `<b>${b.old_hall || "N/A"}</b>`;
 
+            if(b.reassign == 1){
+            hallDisplay = `
+            <b>${b.old_hall}</b> → <b>${b.new_hall}</b>
+            <br>
+            <small style="color:green;">
+                Reassigned by: ${b.admin_name}(ADMIN)
+            </small>
+            <br>
+            <small style="color:#555;">
+                Reason: ${b.reassign_reason && b.reassign_reason.trim() !== "" ? b.reassign_reason : "Not specified"}
+            </small>
+        `;
+        }
         box.innerHTML += `
         <div class="booking-card">
 
             <div class="booking-left">
-                <b>${hallName}</b><br>
+                <b>${hallDisplay}</b><br>
                 <small>${reasonText}: ${b.purpose}</small>
                 ${cancelReasonText}
             </div>

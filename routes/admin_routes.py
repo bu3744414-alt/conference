@@ -22,7 +22,11 @@ def admin_bookings():
     cursor.execute("""
 SELECT 
 t.booking_id,
-m.conference_name,
+
+m.conference_name AS old_hall,
+
+m2.conference_name AS new_hall,   -- 🔥 NEW
+
 t.department,
 l.department AS user_department,
 
@@ -42,7 +46,12 @@ CASE
 END AS end_time,
 
 t.empname,
-t.status,
+
+CASE 
+    WHEN ISNULL(t.reassign_flag,0)=1 THEN 'Reassigned'
+    WHEN ISNULL(t.rescheduled,0)=1 THEN 'Rescheduled'
+    ELSE t.status
+END AS status,
 
 CASE 
     WHEN ISNULL(t.rescheduled,0)=1 THEN t.resch_reason 
@@ -50,13 +59,18 @@ CASE
 END AS purpose,
 
 t.admin_remarks,
-
-ISNULL(t.rescheduled,0) AS rescheduled   
+t.admin_name,                      -- 🔥 NEW
+t.reassign_reason,
+ISNULL(t.rescheduled,0) AS rescheduled,
+ISNULL(t.reassign_flag,0) AS reassign   -- 🔥 NEW
 
 FROM booking_transactions t
 
 JOIN conference_master m
 ON t.conference_id = m.conference_id
+
+LEFT JOIN conference_master m2
+ON t.re_conference_id = m2.conference_id   -- 🔥 NEW JOIN
 
 JOIN Login_mas l
 ON t.empno = l.employee_id
@@ -77,19 +91,23 @@ ORDER BY start_time
 
     for r in rows:
         bookings.append({
-            "id": r[0],
-            "hall": r[1],
-            "department": r[2],
-            "user_dept": r[3],
-            "date": str(r[4]),
-            "start": str(r[5])[:5],
-            "end": str(r[6])[:5],
-            "user": r[7],
-            "status": r[8],
-            "purpose": r[9],
-            "cancel_reason": r[10],
-            "rescheduled": r[11]
-        })
+        "id": r[0],
+        "old_hall": r[1],
+        "new_hall": r[2],
+        "department": r[3],
+        "user_dept": r[4],
+        "date": str(r[5]),
+        "start": str(r[6])[:5],
+        "end": str(r[7])[:5],
+        "user": r[8],
+        "status": r[9],
+        "purpose": r[10],
+        "cancel_reason": r[11],
+        "admin_name": r[12],
+        "reassign_reason": r[13],   # ✅ ADD THIS
+        "rescheduled": r[14],
+        "reassign": r[15]
+    })
 
     return jsonify(bookings)
 

@@ -1,7 +1,14 @@
 
-
+const hallNames = {
+    101: "First Floor Conference",
+    102: "First Floor Conference Small",
+    201: "Second Floor Conference",
+    301: "Third Floor Conference",
+    401: "Fourth Floor Conference"
+};
 
 async function loadAdminBookings(){
+
     document.getElementById("dashboardPanel").style.display="none";
     document.getElementById("availabilityPanel").style.display="none";
     document.getElementById("myBookingsPanel").style.display="none";
@@ -10,12 +17,9 @@ async function loadAdminBookings(){
     const date = document.getElementById("adminBookingDate").value;
 
     let url = "/admin_bookings";
-
     if(date){
         url += "?date=" + date;
     }
-
-    
 
     const res = await fetch(url);
     const bookings = await res.json();
@@ -24,62 +28,95 @@ async function loadAdminBookings(){
     box.innerHTML = "";
 
     if(bookings.length === 0){
+        
         box.innerHTML = "<p>No bookings found</p>";
         return;
     }
 
     bookings.forEach(b => {
-        
-        
-        const statusText = b.rescheduled == 1 ? "Rescheduled" : b.status;   
+            console.log(b);
+        let statusText = b.status;
+
+        if(b.reassign == 1){
+            statusText = "Reassigned";
+        }
+        else if(b.rescheduled == 1){
+            statusText = "Rescheduled";
+        }
         const reasonText = b.rescheduled == 1 ? "Reschedule Reason" : "Purpose";
 
         const today = new Date().toISOString().split('T')[0];
 
-        let cancelBtn = "";
+        // 🔥 MENU (REASSIGN + CANCEL)
+        let actionMenu = "";
 
         if(b.date >= today && b.status === "Booked"){
-            cancelBtn = `
-            <button class="cancel-btn" onclick="openCancel(${b.id})">
-                Cancel
-            </button>`;
+            actionMenu = `
+            <div class="menu-container">
+                <button class="menu-btn" onclick="toggleMenu(this)">⋯</button>
+
+                <div class="menu-popup hidden">
+                    <button onclick="openReassign(${b.id}, '${b.date}', '${b.start}', '${b.end}')">
+                        Reassign Hall
+                    </button>
+
+                    <button class="cancel-btn" onclick="openCancel(${b.id})">
+                        Cancel
+                    </button>
+                </div>
+            </div>`;
         }
-        
-        // ⭐ Decide what text to show
-        // ⭐ cancellation reason
-    let cancelReasonText = "";
 
-    if(b.status === "Cancelled" && b.cancel_reason){
-        cancelReasonText = `
-        <br>
-        <small>Cancellation Reason: ${b.cancel_reason}</small>
-        `;
-    }
+        // 🔥 FIX: declare variable
+        let cancelReasonText = "";
 
-    let deptText = "";
+        if(b.status === "Cancelled" && b.cancel_reason){
+            cancelReasonText = `
+            <br>
+            <small>Cancellation Reason: ${b.cancel_reason}</small>
+            `;
+        }
 
-    if(b.user_dept === "Admin"){
-        deptText = `
-        <small>Booked for: ${b.department}</small>
-        <br>
-        <small>Booked by: ${b.user} (ADMIN)</small>
-        `;
-    }
-    else{
-        deptText = `
-        <small>Department: ${b.department}</small>
-        <br>
-        <small>Booked by: ${b.user}</small>
-        `;
-    }
+        let deptText = "";
 
+        if(b.user_dept === "Admin"){
+            deptText = `
+            <small>Booked for: ${b.department}</small>
+            <br>
+            <small>Booked by: ${b.user} (ADMIN)</small>
+            `;
+        }
+        else{
+            deptText = `
+            <small>Department: ${b.department}</small>
+            <br>
+            <small>Booked by: ${b.user}</small>
+            `;
+        }
+        // 🔥 FIXED HALL DISPLAY
+        let hallDisplay = `<b>${hallNames[b.old_hall] || b.old_hall}</b>`;
+
+        if(b.reassign == 1){
+            hallDisplay = `
+                <b>${hallNames[b.old_hall] || b.old_hall}</b> → 
+                <b>${hallNames[b.new_hall] || b.new_hall}</b>
+                <br>
+                <small style="color:green;">
+                    Reassigned by: ${b.admin_name} (ADMIN)
+                </small>
+                <br>
+                <small style="color:#555;">
+                    Reason: ${b.reassign_reason && b.reassign_reason.trim() !== "" ? b.reassign_reason : "Not specified"}
+                </small>
+            `;
+        }
         box.innerHTML += `
         <div class="booking-card">
 
             <div class="booking-left">
-                ${b.hall}
+                ${hallDisplay}
                 <br>
-                ${deptText}
+                ${deptText} 
                 <br>
                 
                 <small>${reasonText}: ${b.purpose}</small>
@@ -96,8 +133,9 @@ async function loadAdminBookings(){
             </div>
 
             <div class="booking-actions">
-                ${cancelBtn}
+                ${actionMenu}
             </div>
+            
 
         </div>`;
     });
@@ -247,4 +285,79 @@ async function loadHalls(){
         </div>`;
     });
 
+}
+
+async function submitReassign(){
+
+    const hall = document.getElementById("reHall").value;
+    const reason = document.getElementById("reassignReason").value;
+
+    const res = await fetch("/reassign", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            booking_id: selectedBookingId,
+            hall_id: hall,
+            date: selectedDate,
+            start: selectedStart,
+            end: selectedEnd,
+            reason: reason
+        })
+    });
+
+    const data = await res.json();
+
+    if(data.status === "error"){
+        showPopup("Conflict", data.message);
+        return;
+    }
+
+    showPopup("Success", data.message);
+    // 🔥 CLOSE REASSIGN MODAL
+    document.getElementById("reassignModal").style.display = "none";
+
+    // 🔥 OPTIONAL: clear text
+    document.getElementById("reassignReason").value = "";
+
+    // 🔥 RELOAD DATA
+    
+    closeReassign();
+    loadAdminBookings();
+}
+function showPopup(title, message){
+    document.getElementById("popupTitle").innerText = title;
+    document.getElementById("popupMessage").innerText = message;
+    document.getElementById("popupOverlay").style.display = "flex";
+}
+
+function closePopup(){
+    document.getElementById("popupOverlay").style.display = "none";
+}
+function toggleMenu(btn){
+
+    // close all menus first
+    document.querySelectorAll(".menu-popup").forEach(m => {
+        m.style.display = "none";
+    });
+
+    const popup = btn.nextElementSibling;
+
+    // toggle current
+    popup.style.display = (popup.style.display === "block") ? "none" : "block";
+}
+let selectedBookingId = null;
+let selectedDate = null;
+let selectedStart = null;
+let selectedEnd = null;
+
+function openReassign(id, date, start, end){
+
+    console.log("Reassign clicked:", id); // debug
+
+    selectedBookingId = id;
+    selectedDate = date;
+    selectedStart = start;
+    selectedEnd = end;
+
+    document.getElementById("reassignModal").style.display = "flex";
 }

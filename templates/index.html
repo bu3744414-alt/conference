@@ -322,6 +322,28 @@
   </div>
 </div>
 
+<!-- REASSIGN MODAL -->
+<div id="reassignModal" class="modal">
+  <div class="modal-box">
+    <h3>Reassign Hall</h3>
+
+    <label>Select Hall</label>
+    <select id="reHall">
+        {% for hall in halls %}
+        <option value="{{ hall[0] }}">{{ hall[1] }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Reason</label>
+    <textarea id="reassignReason" placeholder="Enter reason"></textarea>
+
+    <div style="margin-top:10px;">
+        <button onclick="closeReassign()">Cancel</button>
+        <button onclick="submitReassign()">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <!-- CORPORATE ADMIN SETTINGS -->
 <div id="settingsModal" class="modal">
   <div class="modal-box corporate-settings">

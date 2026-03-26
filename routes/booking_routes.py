@@ -16,20 +16,37 @@ def availability():
 
     cursor.execute("""
         SELECT
-        CASE WHEN rescheduled = 1 THEN re_start_time ELSE start_time END,
-        CASE WHEN rescheduled = 1 THEN re_end_time ELSE end_time END,
-        department,
-        empname
-        FROM booking_transactions
-        WHERE conference_id=?
-        AND CAST(
-            CASE 
-                WHEN rescheduled = 1 THEN rescheduled_date 
-                ELSE trn_date 
-            END AS DATE
-        ) = CAST(? AS DATE)
-        AND status='Booked'
-    """,(hall,date_val))
+    CASE 
+        WHEN ISNULL(rescheduled,0)=1 THEN re_start_time 
+        ELSE start_time 
+    END,
+
+    CASE 
+        WHEN ISNULL(rescheduled,0)=1 THEN re_end_time 
+        ELSE end_time 
+    END,
+
+    department,
+    empname
+
+FROM booking_transactions
+
+WHERE 
+(
+    (ISNULL(reassign_flag,0)=0 AND conference_id = ?)
+    OR
+    (ISNULL(reassign_flag,0)=1 AND re_conference_id = ?)
+)
+
+AND CAST(
+    CASE 
+        WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date 
+        ELSE trn_date 
+    END AS DATE
+) = CAST(? AS DATE)
+
+AND status='Booked'
+    """,(hall, hall, date_val))
 
     rows = cursor.fetchall()
     conn.close()
@@ -72,12 +89,17 @@ def book():
     # 🔍 Check for time conflict
     cursor.execute("""
     SELECT start_time, end_time, department, empname
-    FROM booking_transactions
-    WHERE conference_id=? 
-    AND trn_date=?
-    AND status='Booked'
-    AND (? < end_time AND ? > start_time)
-    """,(hall, meeting_date, start, end))
+FROM booking_transactions
+WHERE 
+(
+    (ISNULL(reassign_flag,0)=0 AND conference_id = ?)
+    OR
+    (ISNULL(reassign_flag,0)=1 AND re_conference_id = ?)
+)
+AND CAST(trn_date AS DATE) = CAST(? AS DATE)
+AND status='Booked'
+AND (? < end_time AND ? > start_time)
+    """,(hall, hall, meeting_date, start, end))
 
     # office hours validation
     if end <= start:
@@ -95,8 +117,8 @@ def book():
     if conflict:
         s, e, d, u = conflict
 
-        s = datetime.strptime(str(s)[:8], "%H:%M:?").strftime("%I:%M %p")
-        e = datetime.strptime(str(e)[:8], "%H:%M:?").strftime("%I:%M %p")
+        s = datetime.strptime(str(s)[:8], "%H:%M:%S").strftime("%I:%M %p")
+        e = datetime.strptime(str(e)[:8], "%H:%M:%S").strftime("%I:%M %p")
 
         conn.close()
         return jsonify(
@@ -203,6 +225,96 @@ def reschedule(booking_id):
 
     return jsonify(status="success", message="Booking rescheduled successfully")
 
+
+# ---------------- REASSIGN HALL ----------------
+@booking.route('/reassign', methods=['POST'])
+def reassign():
+
+    if not session.get('user') or session.get('role') != 'admin':
+        return jsonify(status="error", message="Unauthorized")
+
+    data = request.json
+
+    booking_id = data["booking_id"]
+    new_hall = data["hall_id"]
+    new_date = data["date"]
+    new_start = data["start"]
+    new_end = data["end"]
+    reason = data["reason"]
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # VALIDATION
+    if new_end <= new_start:
+        return jsonify(status="error", message="End time must be after start time")
+
+    if new_start < "09:00" or new_end > "20:00":
+        return jsonify(status="error", message="Booking allowed only between 9 AM and 8 PM")
+
+    # 🔥 CONFLICT CHECK
+    cursor.execute("""
+    SELECT 
+    start_time,
+    end_time,
+    department,
+    empname
+FROM booking_transactions
+WHERE 
+    (
+        -- ONLY check active hall
+        (ISNULL(reassign_flag,0)=0 AND conference_id = ?)
+        OR
+        (ISNULL(reassign_flag,0)=1 AND re_conference_id = ?)
+    )
+AND CAST(trn_date AS DATE) = CAST(? AS DATE)
+AND status = 'Booked'
+AND booking_id != ?
+AND (? < end_time AND ? > start_time)
+""", (new_hall, new_hall, new_date, booking_id, new_start, new_end))
+
+    conflict = cursor.fetchone()
+
+    if conflict:
+        s, e, d, u = conflict
+        s = datetime.strptime(str(s)[:8], "%H:%M:%S").strftime("%I:%M %p")
+        e = datetime.strptime(str(e)[:8], "%H:%M:%S").strftime("%I:%M %p")
+
+        return jsonify(
+            status="error",
+            message=f"Hall already booked by {d} ({u}) from {s} to {e}"
+        )
+
+    # UPDATE
+    cursor.execute("""
+        UPDATE booking_transactions
+    SET
+        
+        reassign_flag = 1,
+        status = 'Reassigned', 
+        re_conference_id = ?,
+        
+       
+        reassign_reason = ?,
+        admin_id = ?,
+        admin_name = ?,
+        reassigned_on = GETDATE()
+    WHERE booking_id = ?
+""", (
+         new_hall,
+        
+        
+        reason,
+        session['empno'],
+        session['user'],
+        booking_id
+))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify(status="success", message="Hall reassigned successfully")
+
 #Shows all bookings for only the logged in users 
 @booking.route("/my_bookings")
 def my_bookings():
@@ -219,36 +331,58 @@ def my_bookings():
 
     cursor.execute("""
         SELECT 
-            booking_id,
-            conference_id,
-            CASE 
-                WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
-                ELSE trn_date
-            END,
-            CASE 
-                WHEN ISNULL(rescheduled,0)=1 THEN re_start_time
-                ELSE start_time
-            END,
-            CASE 
-                WHEN ISNULL(rescheduled,0)=1 THEN re_end_time
-                ELSE end_time
-            END,
-            status,
-            CASE
-                WHEN ISNULL(rescheduled,0)=1 THEN resch_reason
-                ELSE purpose
-            END,
-            admin_remarks,
-            ISNULL(rescheduled,0)
-        FROM booking_transactions
-        WHERE (empno=? OR empname=?)
-        AND CAST(
-            CASE 
-                WHEN ISNULL(rescheduled,0)=1 THEN rescheduled_date
-                ELSE trn_date
-            END AS DATE
-        ) = CAST(? AS DATE)
-        ORDER BY start_time
+    t.booking_id,
+
+    m.conference_name,        -- ✅ OLD hall name
+    m2.conference_name,       -- ✅ NEW hall name
+
+    CASE 
+        WHEN ISNULL(t.rescheduled,0)=1 THEN t.rescheduled_date
+        ELSE t.trn_date
+    END,
+
+    CASE 
+        WHEN ISNULL(t.rescheduled,0)=1 THEN t.re_start_time
+        ELSE t.start_time
+    END,
+
+    CASE 
+        WHEN ISNULL(t.rescheduled,0)=1 THEN t.re_end_time
+        ELSE t.end_time
+    END,
+
+    CASE 
+        WHEN ISNULL(t.reassign_flag,0)=1 THEN 'Reassigned'
+        WHEN ISNULL(t.rescheduled,0)=1 THEN 'Rescheduled'
+        ELSE t.status
+    END,
+
+    t.purpose,
+    t.admin_remarks,
+    t.admin_name,
+    t.reassign_reason,   -- ✅ ADD THIS
+
+    ISNULL(t.rescheduled,0),
+    ISNULL(t.reassign_flag,0)
+
+FROM booking_transactions t
+
+JOIN conference_master m
+ON t.conference_id = m.conference_id
+
+LEFT JOIN conference_master m2
+ON t.re_conference_id = m2.conference_id
+
+WHERE (t.empno=? OR t.empname=?)
+
+AND CAST(
+    CASE 
+        WHEN ISNULL(t.rescheduled,0)=1 THEN t.rescheduled_date
+        ELSE t.trn_date
+    END AS DATE
+) = CAST(? AS DATE)
+
+ORDER BY start_time
     """, (session["empno"], session["user"], selected_date))
 
     rows = cursor.fetchall()
@@ -259,18 +393,21 @@ def my_bookings():
     for r in rows:
         bookings.append({
             "id": r[0],
-            "hall": r[1],
-            "date": str(r[2]),
-            "start": str(r[3])[:5],
-            "end": str(r[4])[:5],
-            "status": r[5],
-            "purpose": r[6],
-            "cancel_reason": r[7],
-            "rescheduled": r[8]
+            "old_hall": r[1],
+            "new_hall": r[2],
+            "date": str(r[3]),
+            "start": str(r[4])[:5],
+            "end": str(r[5])[:5],
+            "status": r[6],
+            "purpose": r[7],
+            "admin_remarks": r[8],
+            "admin_name": r[9],
+            "reassign_reason": r[10],   # ✅ FIX
+            "rescheduled": r[11],
+            "reassign": r[12]
         })
 
     return jsonify(bookings)
-
 
 #shows the all bookings for the ADMIN at the All department bookings 
 @booking.route("/all_bookings")
@@ -288,22 +425,79 @@ def all_bookings():
 
     cursor.execute("""
         SELECT 
-            booking_id,
-            conference_id,
-            trn_date,
-            start_time,
-            end_time,
-            status,
-            purpose
-        FROM booking_transactions
-        WHERE CAST(trn_date AS DATE) = CAST(? AS DATE)
-        ORDER BY start_time
+    t.booking_id,
+
+    m.conference_name,
+    m2.conference_name,
+
+    CASE 
+        WHEN ISNULL(t.rescheduled,0)=1 THEN t.rescheduled_date
+        ELSE t.trn_date
+    END,
+
+    CASE 
+        WHEN ISNULL(t.rescheduled,0)=1 THEN t.re_start_time
+        ELSE t.start_time
+    END,
+
+    CASE 
+        WHEN ISNULL(t.rescheduled,0)=1 THEN t.re_end_time
+        ELSE t.end_time
+    END,
+
+    CASE 
+        WHEN ISNULL(t.reassign_flag,0)=1 THEN 'Reassigned'
+        WHEN ISNULL(t.rescheduled,0)=1 THEN 'Rescheduled'
+        ELSE t.status
+    END,
+
+    t.purpose,
+    t.admin_name,
+    t.reassign_reason,
+
+    ISNULL(t.rescheduled,0),
+    ISNULL(t.reassign_flag,0)
+
+FROM booking_transactions t
+
+JOIN conference_master m
+ON t.conference_id = m.conference_id
+
+LEFT JOIN conference_master m2
+ON t.re_conference_id = m2.conference_id
+
+WHERE CAST(
+    CASE 
+        WHEN ISNULL(t.rescheduled,0)=1 THEN t.rescheduled_date
+        ELSE t.trn_date
+    END AS DATE
+) = CAST(? AS DATE)
+
+ORDER BY start_time
     """, (selected_date,))
 
     rows = cursor.fetchall()
     conn.close()
 
-    return jsonify(rows)
+    data = []
+
+    for r in rows:
+        data.append({
+            "id": r[0],
+            "old_hall": r[1],
+            "new_hall": r[2],
+            "date": str(r[3]),
+            "start": str(r[4])[:5],
+            "end": str(r[5])[:5],
+            "status": r[6],
+            "purpose": r[7],
+            "admin_name": r[8],
+            "reassign_reason": r[9],   # ✅ FIX
+            "reassign": r[10],
+            "rescheduled": r[11]
+        })
+
+    return jsonify(data)
 
 @booking.route('/monthly_bookings')
 def monthly_bookings():
@@ -316,19 +510,38 @@ def monthly_bookings():
     conn = get_connection()
     cur = conn.cursor()
 
+    
     cur.execute("""
     SELECT 
-        bt.TRN_DATE,
-        cm.conference_name,
-        bt.start_time,
-        bt.end_time,
-        bt.purpose,
-        bt.status
+    bt.TRN_DATE,
+
+    CASE 
+        WHEN ISNULL(bt.reassign_flag,0)=1 
+            THEN cm1.conference_name + ' -> ' + cm2.conference_name
+        ELSE cm1.conference_name
+    END AS hall,
+
+    bt.start_time,
+    bt.end_time,
+    bt.purpose,
+
+    CASE 
+        WHEN ISNULL(bt.reassign_flag,0)=1 THEN 'Reassigned'
+        WHEN ISNULL(bt.rescheduled,0)=1 THEN 'Rescheduled'
+        ELSE bt.status
+    END AS status
+
     FROM booking_transactions bt
-    JOIN conference_master cm 
-        ON bt.conference_id = cm.conference_id
+
+    JOIN conference_master cm1
+        ON bt.conference_id = cm1.conference_id
+
+    LEFT JOIN conference_master cm2
+        ON bt.re_conference_id = cm2.conference_id
+
     WHERE bt.empno = ?
-        AND bt.TRN_DATE LIKE ?
+    AND bt.TRN_DATE LIKE ?
+
     ORDER BY 
         bt.TRN_DATE ASC,
         bt.conference_id ASC,

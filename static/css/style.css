@@ -1069,3 +1069,77 @@ font-size:14px;
 .hidden {
   display: none;
 }
+.menu-container {
+  position: relative;
+}
+
+.menu-btn {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+
+
+
+
+.menu-container {
+  position: relative;
+  display: inline-block;
+}
+
+/* ⋯ button */
+.menu-btn {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Popup box */
+.menu-popup {
+  position: absolute;
+  right: 0;
+  top: 35px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 5px;
+  width: 150px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  z-index: 999;
+}
+
+/* 🔥 IMPORTANT FIX */
+.menu-popup button {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  background: white;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+/* hover */
+.menu-popup button:hover {
+  background: #f0f0f0;
+}
+
+/* cancel red */
+.menu-popup .cancel-btn {
+  color: red;
+  font-weight: bold;
+}
+
+/* hidden class */
+.hidden {
+  display: none;
+}

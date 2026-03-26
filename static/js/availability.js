@@ -11,13 +11,7 @@ function openAvailability(){
     loadHallCards();
 }
 
-const hallNames = {
-    "101": "First Floor Conference",
-    "102": "First Floor Conference Small",
-    "201": "Second Floor Conference",
-    "301": "Third Floor Conference",
-    "401": "Fourth Floor Conference"
-};
+
 async function loadHallCards(){
 
     const res = await fetch("/hall_stats");
