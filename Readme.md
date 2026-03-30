@@ -123,13 +123,19 @@ http://127.0.0.1:5000
 
 ## conference_master
 
+* sno
 * conference_id
 * conference_name
+* status
 
 ## login_mas
 
 * employee_id
 * department
+* username
+* password
+* role
+* status_flag
 
 ---
 
@@ -191,13 +197,6 @@ Ensures overlapping bookings are prevented.
 * Calendar integration
 * Mobile responsive UI
 * Authentication improvements
-
----
-
-# 👨‍💻 Author
-
-**Aadi Sai Neekshay**
-Computer Science Student & Developer
 
 ---
 
