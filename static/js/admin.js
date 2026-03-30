@@ -56,11 +56,11 @@ async function loadAdminBookings(){
                 <button class="menu-btn" onclick="toggleMenu(this)">⋯</button>
 
                 <div class="menu-popup hidden">
-                    <button onclick="openReassign(${b.id}, '${b.date}', '${b.start}', '${b.end}')">
+                    <button onclick="openReassign(${b.id}, '${b.date}', '${b.start}', '${b.end}') closeAllMenus();">
                         Reassign Hall
                     </button>
 
-                    <button class="cancel-btn" onclick="openCancel(${b.id})">
+                    <button class="cancel-btn" onclick="openCancel(${b.id}) closeAllMenus(); closeAllMenus();">
                         Cancel
                     </button>
                 </div>
@@ -349,6 +349,12 @@ let selectedBookingId = null;
 let selectedDate = null;
 let selectedStart = null;
 let selectedEnd = null;
+// it will close all the popup features 
+function closeAllMenus(){
+    document.querySelectorAll(".menu-popup").forEach(m => {
+        m.style.display = "none";
+    });
+}
 
 function openReassign(id, date, start, end){
 
@@ -361,3 +367,13 @@ function openReassign(id, date, start, end){
 
     document.getElementById("reassignModal").style.display = "flex";
 }
+document.addEventListener("click", function(event){
+
+    const isMenu = event.target.closest(".menu-container");
+
+    if(!isMenu){
+        document.querySelectorAll(".menu-popup").forEach(m => {
+            m.style.display = "none";
+        });
+    }
+});
