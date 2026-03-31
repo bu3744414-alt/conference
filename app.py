@@ -30,7 +30,7 @@ app.register_blueprint(update_halls_bp)
 app.register_blueprint(email)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)
 
 
 # Application is created by AADI SAI NEEKSHAY(IT Intern) if any software wants to be created or maintained contact:aadisaineekshay@gmail.com

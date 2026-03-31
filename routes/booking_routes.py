@@ -154,6 +154,16 @@ def book():
     email_row = cursor.fetchone()
     user_email = email_row[0] if email_row and email_row[0] else None
 
+    # 🔥 GET HALL NAME
+    cursor.execute("""
+SELECT conference_name 
+FROM conference_master 
+WHERE conference_id = ?
+""", (hall,))
+
+    hall_row = cursor.fetchone()
+    hall_name = hall_row[0] if hall_row else hall
+
     conn.commit()
     conn.close()
 
@@ -162,7 +172,7 @@ def book():
         body = build_email_template(
             "Booking Created",
             session['user'],
-            hall,
+            hall_name,
             meeting_date,
             start,
             end,
@@ -255,12 +265,23 @@ def reschedule(booking_id):
         WHERE booking_id=?
     """,(new_date,new_start,new_end,reason,booking_id))
 
+    
     # 🔥 GET EMAIL
     cursor.execute("SELECT email FROM login_mas WHERE employee_id=?", (empno,))
     email_row = cursor.fetchone()
     if email_row and email_row[0]:
         user_email = email_row[0]
     
+
+    # 🔥 GET HALL NAME
+    cursor.execute("""
+    SELECT conference_name 
+    FROM conference_master 
+    WHERE conference_id = ?
+    """, (hall,))
+
+    hall_row = cursor.fetchone()
+    hall_name = hall_row[0] if hall_row else hall
 
     conn.commit()
     conn.close()
@@ -269,7 +290,7 @@ def reschedule(booking_id):
     body = build_email_template(
         "Booking Rescheduled",
         session['user'],
-        hall,
+        hall_name,
         new_date,
         new_start,
         new_end,

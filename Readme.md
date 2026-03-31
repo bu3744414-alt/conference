@@ -231,8 +231,8 @@ This system demonstrates:
 
 * Open the Terminal 
 * Navigate to Project Folder
-* To Run Type:-> (python app.py)
-* Press Ctrl+Click on ("http://127.0.0.1:5000")
+* To Run Type:-> (waitress-serve --host=0.0.0.0 --port=5000 app:app)
+* Press Ctrl+Click on ("INFO:waitress:Serving on http://0.0.0.0:5000")
 * It will open the the Project in Browser.
 
 ---
