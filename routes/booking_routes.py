@@ -2,6 +2,9 @@ from flask import Blueprint, request, jsonify, session, render_template, redirec
 from database.db import get_connection
 from datetime import datetime, date
 from utils.email_service import send_email, build_email_template
+
+COMMON_EMAIL = "your_common_email@example.com"
+
 booking = Blueprint("booking", __name__)
 
 
@@ -179,7 +182,14 @@ WHERE conference_id = ?
             purpose
         )
 
-        send_email(user_email, "Booking Confirmation", body)
+        # 🔥 SEND EMAIL TO BOTH
+
+    # send to user
+    if user_email:
+        send_email(user_email, "Booking Cancelled", body)
+
+    # send to common mail
+    send_email(COMMON_EMAIL, "Booking Cancelled", body)
 
     return jsonify(status="success", message="Booking successful")
 
@@ -296,8 +306,13 @@ def reschedule(booking_id):
         new_end,
         reason
     )
+    # 🔥 SEND EMAIL TO BOTH
+    # send to user
     if user_email:
-        send_email(user_email, "Booking Rescheduled", body)
+        send_email(user_email, "Booking Cancelled", body)
+
+    # send to common mail
+    send_email(COMMON_EMAIL, "Booking Cancelled", body)
     
 
     return jsonify(status="success", message="Booking rescheduled successfully")
@@ -423,7 +438,14 @@ def reassign():
     <p><b>Reason:</b> {reason}</p>
     """
 
-    send_email(user_email, "Hall Reassigned", body)
+    # 🔥 SEND EMAIL TO BOTH
+
+    # send to user
+    if user_email:
+        send_email(user_email, "Booking Cancelled", body)
+
+    # send to common mail
+    send_email(COMMON_EMAIL, "Booking Cancelled", body)
     
     return jsonify(status="success", message="Hall reassigned successfully")
 
