@@ -486,9 +486,10 @@ def my_bookings():
     END,
 
     CASE 
-        WHEN ISNULL(t.reassign_flag,0)=1 THEN 'Reassigned'
-        WHEN ISNULL(t.rescheduled,0)=1 THEN 'Rescheduled'
-        ELSE t.status
+    WHEN t.status = 'Cancelled' THEN 'Cancelled'
+    WHEN ISNULL(t.reassign_flag,0)=1 THEN 'Reassigned'
+    WHEN ISNULL(t.rescheduled,0)=1 THEN 'Rescheduled'
+    ELSE t.status
     END,
 
     t.purpose,
@@ -561,8 +562,11 @@ def all_bookings():
         SELECT 
     t.booking_id,
 
-    m.conference_name,
-    m2.conference_name,
+    m.conference_name AS old_hall,
+    m2.conference_name AS new_hall,
+
+    t.department,
+    l.department AS user_department,
 
     CASE 
         WHEN ISNULL(t.rescheduled,0)=1 THEN t.rescheduled_date
@@ -579,13 +583,20 @@ def all_bookings():
         ELSE t.end_time
     END,
 
+    t.empname,
+
     CASE 
+        WHEN t.status = 'Cancelled' THEN 'Cancelled'
         WHEN ISNULL(t.reassign_flag,0)=1 THEN 'Reassigned'
         WHEN ISNULL(t.rescheduled,0)=1 THEN 'Rescheduled'
         ELSE t.status
     END,
 
-    t.purpose,
+    CASE 
+        WHEN ISNULL(t.rescheduled,0)=1 THEN t.resch_reason
+        ELSE t.purpose
+    END,
+
     t.admin_name,
     t.reassign_reason,
 
@@ -599,6 +610,9 @@ ON t.conference_id = m.conference_id
 
 LEFT JOIN conference_master m2
 ON t.re_conference_id = m2.conference_id
+
+JOIN login_mas l
+ON t.empno = l.employee_id
 
 WHERE CAST(
     CASE 
@@ -620,15 +634,18 @@ ORDER BY start_time
             "id": r[0],
             "old_hall": r[1],
             "new_hall": r[2],
-            "date": str(r[3]),
-            "start": str(r[4])[:5],
-            "end": str(r[5])[:5],
-            "status": r[6],
-            "purpose": r[7],
-            "admin_name": r[8],
-            "reassign_reason": r[9],   # ✅ FIX
-            "reassign": r[10],
-            "rescheduled": r[11]
+            "department": r[3],
+            "user_dept": r[4],
+            "date": str(r[5]),
+            "start": str(r[6])[:5],
+            "end": str(r[7])[:5],
+            "user": r[8],
+            "status": r[9],
+            "purpose": r[10],
+            "admin_name": r[11],
+            "reassign_reason": r[12],
+            "rescheduled": r[13],
+            "reassign": r[14]
         })
 
     return jsonify(data)
@@ -660,8 +677,10 @@ def monthly_bookings():
     bt.purpose,
 
     CASE 
-        WHEN ISNULL(bt.reassign_flag,0)=1 THEN 'Reassigned'
+        WHEN bt.status = 'Cancelled' THEN 'Cancelled'
+        WHEN bt.status = 'Booked' THEN 'Booked'
         WHEN ISNULL(bt.rescheduled,0)=1 THEN 'Rescheduled'
+        WHEN ISNULL(bt.reassign_flag,0)=1 THEN 'Reassigned'
         ELSE bt.status
     END AS status
 

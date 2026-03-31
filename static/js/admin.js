@@ -16,7 +16,7 @@ async function loadAdminBookings(){
 
     const date = document.getElementById("adminBookingDate").value;
 
-    let url = "/admin_bookings";
+    let url = "/all_bookings";
     if(date){
         url += "?date=" + date;
     }
@@ -37,12 +37,15 @@ async function loadAdminBookings(){
             console.log(b);
         let statusText = b.status;
 
-        if(b.reassign == 1){
-            statusText = "Reassigned";
-        }
+        // ✅ Only override if NOT cancelled
+        if(b.status !== "Cancelled"){
+            if(b.reassign == 1){
+                statusText = "Reassigned";
+            }
         else if(b.rescheduled == 1){
             statusText = "Rescheduled";
         }
+    } 
         const reasonText = b.rescheduled == 1 ? "Reschedule Reason" : "Purpose";
 
         const today = new Date().toISOString().split('T')[0];

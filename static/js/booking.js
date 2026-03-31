@@ -145,12 +145,15 @@ async function loadMyBookings(){
         const hallName = hallNames[b.hall] || b.hall;
         let statusText = b.status;
 
-        if(b.reassign == 1){
-            statusText = "Reassigned";
-        }
+        // ✅ Only override if NOT cancelled
+        if(b.status !== "Cancelled"){
+            if(b.reassign == 1){
+                statusText = "Reassigned";
+            }
         else if(b.rescheduled == 1){
             statusText = "Rescheduled";
         }
+    }
         const reasonText = b.rescheduled == 1 ? "Reschedule Reason" : "Purpose";
 
         // ⭐ cancellation reason
