@@ -20,12 +20,14 @@ from routes.booking_routes import booking
 from routes.admin_routes import admin
 from routes.main_routes import main
 from routes.update_halls import update_halls_bp
+from utils.email_service import email
 
 app.register_blueprint(auth)
 app.register_blueprint(booking)
 app.register_blueprint(admin)
 app.register_blueprint(main)
 app.register_blueprint(update_halls_bp)
+app.register_blueprint(email)
 
 if __name__ == "__main__":
     app.run(debug=True)

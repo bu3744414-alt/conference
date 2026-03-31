@@ -50,17 +50,17 @@ async function loadAdminBookings(){
         // 🔥 MENU (REASSIGN + CANCEL)
         let actionMenu = "";
 
-        if(b.date >= today && b.status === "Booked"){
+        if(b.date >= today && b.status !== "Cancelled"){
             actionMenu = `
             <div class="menu-container">
-                <button class="menu-btn" onclick="toggleMenu(this)">⋯</button>
-
+                <button class="menu-btn" onclick="toggleMenu(this, event)">⋯</button>
+                
                 <div class="menu-popup hidden">
-                    <button onclick="openReassign(${b.id}, '${b.date}', '${b.start}', '${b.end}') closeAllMenus();">
+                    <button onclick="openReassign(${b.id}, '${b.date}', '${b.start}', '${b.end}', event)">
                         Reassign Hall
                     </button>
 
-                    <button class="cancel-btn" onclick="openCancel(${b.id}) closeAllMenus(); closeAllMenus();">
+                    <button class="cancel-btn" onclick="openCancel(${b.id}, event)">
                         Cancel
                     </button>
                 </div>
@@ -333,16 +333,16 @@ function showPopup(title, message){
 function closePopup(){
     document.getElementById("popupOverlay").style.display = "none";
 }
-function toggleMenu(btn){
+function toggleMenu(btn, event){
 
-    // close all menus first
+    event.stopPropagation(); // 🔥 prevent document click
+
     document.querySelectorAll(".menu-popup").forEach(m => {
         m.style.display = "none";
     });
 
     const popup = btn.nextElementSibling;
 
-    // toggle current
     popup.style.display = (popup.style.display === "block") ? "none" : "block";
 }
 let selectedBookingId = null;
@@ -356,24 +356,30 @@ function closeAllMenus(){
     });
 }
 
-function openReassign(id, date, start, end){
+function openReassign(id, date, start, end, event){
 
-    console.log("Reassign clicked:", id); // debug
+    event.stopPropagation(); // 🔥 VERY IMPORTANT
+
+    console.log("Reassign clicked:", id);
 
     selectedBookingId = id;
     selectedDate = date;
     selectedStart = start;
     selectedEnd = end;
 
+    closeAllMenus(); // ✅ close menu properly
+
     document.getElementById("reassignModal").style.display = "flex";
 }
 document.addEventListener("click", function(event){
 
-    const isMenu = event.target.closest(".menu-container");
-
-    if(!isMenu){
-        document.querySelectorAll(".menu-popup").forEach(m => {
-            m.style.display = "none";
-        });
+    // 🔥 if click is inside menu OR button → do nothing
+    if (event.target.closest(".menu-container") || event.target.closest(".menu-popup")) {
+        return;
     }
+
+    // 🔥 otherwise close menus
+    document.querySelectorAll(".menu-popup").forEach(m => {
+        m.style.display = "none";
+    });
 });
