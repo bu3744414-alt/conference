@@ -285,13 +285,18 @@ def reschedule(booking_id):
 
     # 🔥 GET HALL NAME
     cursor.execute("""
-    SELECT conference_name 
-    FROM conference_master 
-    WHERE conference_id = ?
-    """, (hall,))
+    SELECT t.conference_id, m.conference_name, t.empno
+    FROM booking_transactions t
+    JOIN conference_master m 
+    ON t.conference_id = m.conference_id
+    WHERE t.booking_id=?
+    """, (booking_id,))
 
-    hall_row = cursor.fetchone()
-    hall_name = hall_row[0] if hall_row else hall
+    row = cursor.fetchone()
+
+    conference_id = row[0]     # INT ✅
+    hall_name = row[1]         # STRING ✅ (use this for email)
+    empno = row[2]
 
     conn.commit()
     conn.close()

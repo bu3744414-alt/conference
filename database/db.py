@@ -1,11 +1,11 @@
 import pyodbc
-
+# ---------------- DATABASE INIT ----------------
+# ---------------- SQL CONNECTIONS ----------------
 def get_connection():
     conn = pyodbc.connect(
         "DRIVER={SQL Server};"
-        "SERVER=192.168.128.12;"
+        "SERVER=INHYD-L-5004;"
         "DATABASE=Conference;"
-        "UID=your_username;"
-        "PWD=your_password;"
+        "Trusted_Connection=yes;"
     )
     return conn
