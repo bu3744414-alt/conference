@@ -220,6 +220,10 @@ function openReschedule(id){
 
     document.getElementById("resDate").value = today;
 
+    // 🔥 ADD THESE
+    document.getElementById("resStart").value = "09:00";
+    document.getElementById("resEnd").value = "20:00";
+
     document.getElementById("rescheduleModal").style.display="flex";
 }
 

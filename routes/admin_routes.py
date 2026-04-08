@@ -86,7 +86,7 @@ def cancel(booking_id):
         send_email(user_email, "Booking Cancelled", body)
 
     # send to common mail
-    send_email(COMMON_EMAIL, "Booking Cancelled", body)
+    #send_email(COMMON_EMAIL, "Booking Cancelled", body)
 
     return jsonify(status="success", message="Booking cancelled successfully")
 

@@ -171,27 +171,25 @@ WHERE conference_id = ?
     conn.close()
 
     # 🔥 SEND EMAIL
+    # 🔥 ALWAYS CREATE BODY
+    body = build_email_template(
+    "Booking Created",
+    session['user'],
+    hall_name,
+    meeting_date,
+    start,
+    end,
+    purpose
+    )
+
+# send to user
     if user_email:
-        body = build_email_template(
-            "Booking Created",
-            session['user'],
-            hall_name,
-            meeting_date,
-            start,
-            end,
-            purpose
-        )
+        send_email(user_email, "Booking Successful", body)
 
-        # 🔥 SEND EMAIL TO BOTH
+# send to common mail
+    #send_email(COMMON_EMAIL, "Booking Successful", body)
 
-    # send to user
-    if user_email:
-        send_email(user_email, "Booking Cancelled", body)
-
-    # send to common mail
-    send_email(COMMON_EMAIL, "Booking Cancelled", body)
-
-    return jsonify(status="success", message="Booking successful")
+    return jsonify(status="success", message="Booking Successful")
 
 
 
@@ -227,81 +225,111 @@ def hall_stats():
     return jsonify(data)
 
 
-
+#---Reschduled API Backend program
 @booking.route('/reschedule/<int:booking_id>', methods=['POST'])
 def reschedule(booking_id):
 
+    # 🔐 Session check
     if not session.get('user'):
         return jsonify(status="error", message="Login expired")
 
-    new_date = request.form['date']
-    new_start = request.form['start_time']
-    new_end = request.form['end_time']
+    # 📥 Get form data
+    new_date = request.form.get('date')
+    new_start = request.form.get('start_time')
+    new_end = request.form.get('end_time')
     reason = request.form.get('reason')
+
+    if not new_date or not new_start or not new_end:
+        return jsonify(status="error", message="Missing required fields")
+
+    # ⏱️ Convert time safely
+    try:
+        start = datetime.strptime(new_start, "%H:%M")
+        end = datetime.strptime(new_end, "%H:%M")
+    except:
+        return jsonify(status="error", message="Invalid time format")
+
+    # ❌ Validation
+    if end <= start:
+        return jsonify(status="error", message="End time must be after start time")
+
+    if start.hour < 9 or end.hour > 20 or (end.hour == 20 and end.minute > 0):
+        return jsonify(status="error", message="Booking allowed only between 9 AM and 8 PM")
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    if new_end <= new_start:
+    try:
+        # 🔍 Get booking + hall + emp
+        cursor.execute("""
+            SELECT t.conference_id, m.conference_name, t.empno
+            FROM booking_transactions t
+            JOIN conference_master m 
+                ON t.conference_id = m.conference_id
+            WHERE t.booking_id=?
+        """, (booking_id,))
+
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            return jsonify(status="error", message="Booking not found")
+
+        conference_id, hall_name, empno = row
+
+        # 🚫 OPTIONAL: Check clash (recommended)
+        cursor.execute("""
+            SELECT COUNT(*) FROM booking_transactions
+            WHERE conference_id=?
+            AND (
+                (start_time < ? AND end_time > ?)
+                OR
+                (rescheduled=1 AND re_start_time < ? AND re_end_time > ?)
+            )
+            AND (
+                trn_date=? OR rescheduled_date=?
+            )
+            AND booking_id != ?
+            AND status='Booked'
+        """, (conference_id, new_end, new_start, new_end, new_start,
+              new_date, new_date, booking_id))
+
+        clash = cursor.fetchone()[0]
+
+        if clash > 0:
+            conn.close()
+            return jsonify(status="error", message="Time slot already booked")
+
+        # 🔄 Update booking
+        cursor.execute("""
+            UPDATE booking_transactions
+            SET
+                rescheduled_date=?,
+                re_start_time=?,
+                re_end_time=?,
+                resch_reason=?,
+                rescheduled=1
+            WHERE booking_id=?
+        """, (new_date, new_start, new_end, reason, booking_id))
+
+        # 📧 Get email
+        cursor.execute("""
+            SELECT email FROM login_mas WHERE employee_id=?
+        """, (empno,))
+
+        email_row = cursor.fetchone()
+        user_email = email_row[0] if email_row and email_row[0] else None
+
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify(status="error", message=str(e))
+
+    finally:
         conn.close()
-        return jsonify(status="error", message="End time must be after start time")
 
-    if new_start < "09:00" or new_end > "20:00":
-        conn.close()
-        return jsonify(status="error",
-        message="Booking allowed only between 9 AM and 8 PM")
-
-    # 🔥 GET DETAILS
-    cursor.execute("""
-    SELECT m.conference_name, t.empno
-    FROM booking_transactions t
-    JOIN conference_master m ON t.conference_id = m.conference_id
-    WHERE t.booking_id=?
-    """, (booking_id,))
-    
-    row = cursor.fetchone()
-    hall = row[0]
-    empno = row[1]
-
-    # 🔥 UPDATE
-    cursor.execute("""
-        UPDATE booking_transactions
-        SET
-        rescheduled_date=?,
-        re_start_time=?,
-        re_end_time=?,
-        resch_reason=?,
-        rescheduled=1
-        WHERE booking_id=?
-    """,(new_date,new_start,new_end,reason,booking_id))
-
-    
-    # 🔥 GET EMAIL
-    cursor.execute("SELECT email FROM login_mas WHERE employee_id=?", (empno,))
-    email_row = cursor.fetchone()
-    if email_row and email_row[0]:
-        user_email = email_row[0]
-    
-
-    # 🔥 GET HALL NAME
-    cursor.execute("""
-    SELECT t.conference_id, m.conference_name, t.empno
-    FROM booking_transactions t
-    JOIN conference_master m 
-    ON t.conference_id = m.conference_id
-    WHERE t.booking_id=?
-    """, (booking_id,))
-
-    row = cursor.fetchone()
-
-    conference_id = row[0]     # INT ✅
-    hall_name = row[1]         # STRING ✅ (use this for email)
-    empno = row[2]
-
-    conn.commit()
-    conn.close()
-
-    # 🔥 EMAIL
+    # 📩 Email
     body = build_email_template(
         "Booking Rescheduled",
         session['user'],
@@ -311,17 +339,13 @@ def reschedule(booking_id):
         new_end,
         reason
     )
-    # 🔥 SEND EMAIL TO BOTH
-    # send to user
-    if user_email:
-        send_email(user_email, "Booking Cancelled", body)
 
-    # send to common mail
-    send_email(COMMON_EMAIL, "Booking Cancelled", body)
-    
+    if user_email:
+        send_email(user_email, "Booking Rescheduled", body)
+
+    #send_email(COMMON_EMAIL, "Booking Rescheduled", body)
 
     return jsonify(status="success", message="Booking rescheduled successfully")
-
 
 # ---------------- REASSIGN HALL ----------------
 @booking.route('/reassign', methods=['POST'])
@@ -447,12 +471,12 @@ def reassign():
 
     # send to user
     if user_email:
-        send_email(user_email, "Booking Cancelled", body)
+        send_email(user_email, "Booking Reassigned", body)
 
     # send to common mail
-    send_email(COMMON_EMAIL, "Booking Cancelled", body)
+    #send_email(COMMON_EMAIL, "Booking Reassigned", body)
     
-    return jsonify(status="success", message="Hall reassigned successfully")
+    return jsonify(status="success", message="Hall Reassigned successfully")
 
 #Shows all bookings for only the logged in users 
 @booking.route("/my_bookings")
