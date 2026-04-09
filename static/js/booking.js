@@ -108,9 +108,7 @@ if(start < officeStart || end > officeEnd){
         console.error(err);
     }
 }
-
-
-/* LoadBooking   Main*/
+/* LoadBooking Main */
 async function loadMyBookings(){
 
     document.getElementById("dashboardPanel").style.display="none";
@@ -133,59 +131,70 @@ async function loadMyBookings(){
     const bookings = await res.json();
 
     const box = document.getElementById("myBookingsList");
-    box.innerHTML="";
+    box.innerHTML = "";
 
-    if(bookings.length===0){
-        box.innerHTML="<p>No bookings found</p>";
+    if(bookings.length === 0){
+        box.innerHTML = "<p>No bookings found</p>";
         return;
     }
 
     bookings.forEach(b => {
 
-        const hallName = hallNames[b.hall] || b.hall;
         let statusText = b.status;
 
-        // ✅ Only override if NOT cancelled
+        // ✅ Status override
         if(b.status !== "Cancelled"){
             if(b.reassign == 1){
                 statusText = "Reassigned";
             }
-        else if(b.rescheduled == 1){
-            statusText = "Rescheduled";
+            else if(b.rescheduled == 1){
+                statusText = "Rescheduled";
+            }
         }
-    }
+
         const reasonText = b.rescheduled == 1 ? "Reschedule Reason" : "Purpose";
 
-        // ⭐ cancellation reason
+        // 🔴 CANCEL BLOCK
         let cancelReasonText = "";
-        if(b.status === "Cancelled" && b.cancel_reason){
+        if(b.status === "Cancelled"){
             cancelReasonText = `
-            <br>
-            <small>Cancellation Reason: ${b.cancel_reason}</small>
+                <br>
+                <small style="color:red;">
+                    Cancelled by: ${b.admin_name} (ADMIN)
+                </small>
+                <br>
+                <small style="color:#555;">
+                    Reason: ${b.admin_remarks && b.admin_remarks.trim() !== "" ? b.admin_remarks : "Not specified"}
+                </small>
             `;
         }
-            let hallDisplay = `<b>${b.old_hall || "N/A"}</b>`;
 
-            if(b.reassign == 1){
+        // 🟢 HALL DISPLAY
+        let hallDisplay = `<b>${b.old_hall || "N/A"}</b>`;
+
+        if(b.reassign == 1){
             hallDisplay = `
-            <b>${b.old_hall}</b> → <b>${b.new_hall}</b>
-            <br>
-            <small style="color:green;">
-                Reassigned by: ${b.admin_name}(ADMIN)
-            </small>
-            <br>
-            <small style="color:#555;">
-                Reason: ${b.reassign_reason && b.reassign_reason.trim() !== "" ? b.reassign_reason : "Not specified"}
-            </small>
-        `;
+                <b>${b.old_hall}</b> → <b>${b.new_hall}</b>
+                <br>
+                <small style="color:green;">
+                    Reassigned by: ${b.admin_name} (ADMIN)
+                </small>
+                <br>
+                <small style="color:#555;">
+                    Reason: ${b.reassign_reason && b.reassign_reason.trim() !== "" ? b.reassign_reason : "Not specified"}
+                </small>
+            `;
         }
+
         box.innerHTML += `
         <div class="booking-card">
 
             <div class="booking-left">
-                <b>${hallDisplay}</b><br>
+                ${hallDisplay}<br>
+
                 <small>Booked for: ${b.department}</small><br>
                 <small>${reasonText}: ${b.purpose}</small>
+
                 ${cancelReasonText}
             </div>
 
@@ -209,7 +218,6 @@ async function loadMyBookings(){
         </div>`;
     });
 }
-
 
 
 /* Open RESHUDULE  */

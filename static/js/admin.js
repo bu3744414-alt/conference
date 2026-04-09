@@ -73,12 +73,18 @@ async function loadAdminBookings(){
         // 🔥 FIX: declare variable
         let cancelReasonText = "";
 
-        if(b.status === "Cancelled" && b.cancel_reason){
-            cancelReasonText = `
+        if(b.status === "Cancelled"){
+        cancelReasonText = `
             <br>
-            <small>Cancellation Reason: ${b.cancel_reason}</small>
-            `;
-        }
+            <small style="color:red;">
+                Cancelled by: ${b.admin_name} (ADMIN)
+            </small>
+            <br>
+            <small style="color:#555;">
+                Reason: ${b.admin_remarks && b.admin_remarks.trim() !== "" ? b.admin_remarks : "Not specified"}
+            </small>
+        `;
+    }
 
         let deptText = "";
 

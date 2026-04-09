@@ -3,7 +3,8 @@ from database.db import get_connection
 from datetime import datetime, date
 from utils.email_service import send_email, build_email_template
 
-COMMON_EMAIL = "aadisaineekshay@gmail.com"
+
+COMMON_EMAIL = "conference.room@vslp.in"
 
 booking = Blueprint("booking", __name__)
 
@@ -353,7 +354,6 @@ def reschedule(booking_id):
     send_email(recipients, "Booking Rescheduled", body)
 
     return jsonify(status="success", message="Booking rescheduled successfully")
-
 # ---------------- REASSIGN HALL ----------------
 @booking.route('/reassign', methods=['POST'])
 def reassign():
@@ -361,132 +361,161 @@ def reassign():
     if not session.get('user') or session.get('role') != 'admin':
         return jsonify(status="error", message="Unauthorized")
 
-    data = request.json
+    try:
+        data = request.json
 
-    booking_id = data["booking_id"]
-    new_hall = data["hall_id"]
-    new_date = data["date"]
-    new_start = data["start"]
-    new_end = data["end"]
-    reason = data["reason"]
+        booking_id = data["booking_id"]
+        new_hall = data["hall_id"]
+        new_date = data["date"]
+        new_start = data["start"]
+        new_end = data["end"]
+        reason = data.get("reason", "")
 
-    conn = get_connection()
-    cursor = conn.cursor()
+        from datetime import datetime
 
-    if new_end <= new_start:
-        return jsonify(status="error", message="End time must be after start time")
+        # ✅ Convert time (handles "09:00" or "09:00:00")
+        new_start_time = datetime.strptime(new_start[:5], "%H:%M").time()
+        new_end_time = datetime.strptime(new_end[:5], "%H:%M").time()
 
-    if new_start < "09:00" or new_end > "20:00":
-        return jsonify(status="error", message="Booking allowed only between 9 AM and 8 PM")
+        # ✅ Convert date
+        new_date_obj = datetime.strptime(new_date, "%Y-%m-%d")
 
-    # 🔥 GET OLD HALL + USER
-    cursor.execute("""
-    SELECT m.conference_name, t.empno
-    FROM booking_transactions t
-    JOIN conference_master m ON t.conference_id = m.conference_id
-    WHERE t.booking_id=?
-    """, (booking_id,))
+        # ✅ Strings for SQL (ODBC safe)
+        new_start_str = new_start[:5]
+        new_end_str = new_end[:5]
 
-    row = cursor.fetchone()
-    old_hall = row[0]
-    empno = row[1]
+        # ✅ VALIDATIONS
+        if new_end_time <= new_start_time:
+            return jsonify(status="error", message="End time must be after start time")
 
-    # 🔥 CONFLICT CHECK
-    cursor.execute("""
-    SELECT start_time, end_time, department, empname
-    FROM booking_transactions
-    WHERE 
-        (
-            (ISNULL(reassign_flag,0)=0 AND conference_id = ?)
-            OR
-            (ISNULL(reassign_flag,0)=1 AND re_conference_id = ?)
-        )
-    AND CAST(trn_date AS DATE) = CAST(? AS DATE)
-    AND status = 'Booked'
-    AND booking_id != ?
-    AND (? < end_time AND ? > start_time)
-    """, (new_hall, new_hall, new_date, booking_id, new_start, new_end))
+        if new_start_time < datetime.strptime("09:00", "%H:%M").time() or \
+           new_end_time > datetime.strptime("20:00", "%H:%M").time():
+            return jsonify(status="error", message="Booking allowed only between 9 AM and 8 PM")
 
-    conflict = cursor.fetchone()
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    if conflict:
-        s, e, d, u = conflict
-        s = datetime.strptime(str(s)[:8], "%H:%M:%S").strftime("%I:%M %p")
-        e = datetime.strptime(str(e)[:8], "%H:%M:%S").strftime("%I:%M %p")
+        # 🔥 GET OLD HALL + USER
+        cursor.execute("""
+            SELECT m.conference_name, t.empno
+            FROM booking_transactions t
+            JOIN conference_master m ON t.conference_id = m.conference_id
+            WHERE t.booking_id=?
+        """, (booking_id,))
 
-        return jsonify(
-            status="error",
-            message=f"Hall already booked by {d} ({u}) from {s} to {e}"
-        )
+        row = cursor.fetchone()
 
-    # 🔥 UPDATE
-    cursor.execute("""
-        UPDATE booking_transactions
-        SET
-            reassign_flag = 1,
-            status = 'Reassigned',
-            re_conference_id = ?,
-            reassign_reason = ?,
-            admin_id = ?,
-            admin_name = ?,
-            reassigned_on = GETDATE()
-        WHERE booking_id = ?
-    """, (
-        new_hall,
-        reason,
-        session['empno'],
-        session['user'],
-        booking_id
-    ))
-    # To Get the new hall name from database.
-    cursor.execute("""
-    SELECT conference_name 
-    FROM conference_master 
-    WHERE conference_id = ?
-    """, (new_hall,))
+        if not row:
+            conn.close()
+            return jsonify(status="error", message="Booking not found")
 
-    hall_row = cursor.fetchone()
+        old_hall = row[0]
+        empno = row[1]
 
-    if hall_row:
-        new_hall_name = hall_row[0]
-    else:
-        new_hall_name = new_hall  # fallback
+        # 🔥 CONFLICT CHECK
+        cursor.execute("""
+            SELECT start_time, end_time, department, empname
+            FROM booking_transactions
+            WHERE 
+                (
+                    (ISNULL(reassign_flag,0)=0 AND conference_id = ?)
+                    OR
+                    (ISNULL(reassign_flag,0)=1 AND re_conference_id = ?)
+                )
+            AND CAST(trn_date AS DATE) = CAST(? AS DATE)
+            AND status = 'Booked'
+            AND booking_id != ?
+            AND (CAST(? AS TIME) < end_time AND CAST(? AS TIME) > start_time)
+        """, (new_hall, new_hall, new_date_obj, booking_id, new_start_str, new_end_str))
 
-    # 🔥 GET EMAIL of the user loged in
-    cursor.execute("SELECT email FROM login_mas WHERE employee_id=?", (empno,))
-    email_row = cursor.fetchone()
-    if email_row and email_row[0]:
-        user_email = email_row[0]
-    
-    
-    conn.commit()
-    conn.close()
+        conflict = cursor.fetchone()
 
-    # 🔥 EMAIL Details to send the user
-    body = f"""
-    <h2>Hall Reassigned</h2>
+        if conflict:
+            s, e, d, u = conflict
 
-    <p><b>User:</b> {session['user']}</p>
-    <p><b>Old Hall:</b> {old_hall}</p>
-    <p><b>New Hall:</b> {new_hall_name}</p>
-    <p><b>Date:</b> {new_date}</p>
-    <p><b>Time:</b> {new_start} - {new_end}</p>
-    <p><b>Reason:</b> {reason}</p>
-    """
+            s = datetime.strptime(str(s)[:8], "%H:%M:%S").strftime("%I:%M %p")
+            e = datetime.strptime(str(e)[:8], "%H:%M:%S").strftime("%I:%M %p")
 
-    # 🔥 SEND EMAIL TO BOTH
+            conn.close()
 
-    # send to user
-    recipients = []
+            return jsonify(
+                status="error",
+                message=f"Hall already booked by {d} ({u}) from {s} to {e}"
+            )
 
-    if user_email:
-        recipients.append(user_email)
+        # 🔥 UPDATE BOOKING
+        cursor.execute("""
+            UPDATE booking_transactions
+            SET
+                reassign_flag = 1,
+                status = 'Reassigned',
+                re_conference_id = ?,
+                reassign_reason = ?,
+                admin_id = ?,
+                admin_name = ?,
+                reassigned_on = GETDATE()
+            WHERE booking_id = ?
+        """, (
+            new_hall,
+            reason,
+            session['empno'],
+            session['user'],
+            booking_id
+        ))
 
-    recipients.append(COMMON_EMAIL)
+        # 🔥 GET NEW HALL NAME
+        cursor.execute("""
+            SELECT conference_name 
+            FROM conference_master 
+            WHERE conference_id = ?
+        """, (new_hall,))
 
-    send_email(recipients, "Booking Reassigned", body)
-    
-    return jsonify(status="success", message="Hall Reassigned successfully")
+        hall_row = cursor.fetchone()
+        new_hall_name = hall_row[0] if hall_row else new_hall
+
+        # 🔥 GET USER EMAIL
+        cursor.execute("""
+            SELECT email 
+            FROM login_mas 
+            WHERE employee_id=?
+        """, (empno,))
+
+        email_row = cursor.fetchone()
+        user_email = email_row[0] if email_row and email_row[0] else None
+
+        conn.commit()
+        conn.close()
+
+        # 🔥 EMAIL BODY
+        body = f"""
+        <h2>Hall Reassigned</h2>
+
+        <p><b>User:</b> {session['user']}</p>
+        <p><b>Old Hall:</b> {old_hall}</p>
+        <p><b>New Hall:</b> {new_hall_name}</p>
+        <p><b>Date:</b> {new_date}</p>
+        <p><b>Time:</b> {new_start} - {new_end}</p>
+        <p><b>Reason:</b> {reason if reason else "N/A"}</p>
+        """
+
+        # 🔥 SEND EMAIL (safe)
+        recipients = []
+
+        if user_email:
+            recipients.append(user_email)
+
+        recipients.append(COMMON_EMAIL)
+
+        try:
+            send_email(recipients, "Booking Reassigned", body)
+        except Exception as e:
+            print("EMAIL ERROR:", e)
+
+        return jsonify(status="success", message="Hall Reassigned successfully")
+
+    except Exception as e:
+        print("REASSIGN ERROR:", e)
+        return jsonify(status="error", message=str(e)), 500    
 
 #Shows all bookings for only the logged in users 
 @booking.route("/my_bookings")
