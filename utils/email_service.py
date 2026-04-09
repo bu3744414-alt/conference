@@ -4,7 +4,7 @@ from email.mime.multipart import MIMEMultipart
 from flask import Blueprint
 email = Blueprint("email", __name__)
 
-COMMON_EMAIL = "your_common_email@example.com"
+#COMMON_EMAIL = "conference.room@vslp.in"
 
 EMAIL = "bu3744414@gmail.com"
 PASSWORD = "ufjp buck hipu kpwy"
@@ -16,6 +16,7 @@ SMTP_PORT = 587
 def send_email(to_email, subject, body):
 
     try:
+        print("Sending to:", to_email)
         msg = MIMEMultipart()
         msg['From'] = EMAIL
         msg['To'] = to_email
@@ -27,7 +28,7 @@ def send_email(to_email, subject, body):
         server.starttls()
         server.login(EMAIL, PASSWORD)
 
-        server.send_message(msg)
+        server.sendmail(EMAIL, to_email, msg.as_string())
         server.quit()
 
         print("Email sent successfully")

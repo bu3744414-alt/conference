@@ -474,7 +474,7 @@ def reassign():
         send_email(user_email, "Booking Reassigned", body)
 
     # send to common mail
-    #send_email(COMMON_EMAIL, "Booking Reassigned", body)
+    send_email(COMMON_EMAIL, "Booking Reassigned", body)
     
     return jsonify(status="success", message="Hall Reassigned successfully")
 
@@ -524,7 +524,7 @@ def my_bookings():
     t.purpose,
     t.admin_remarks,
     t.admin_name,
-    t.reassign_reason,   -- ✅ ADD THIS
+    t.reassign_reason,   -- ✅ ADDED THIS
 
     ISNULL(t.rescheduled,0),
     ISNULL(t.reassign_flag,0)

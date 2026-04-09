@@ -231,10 +231,12 @@ This system demonstrates:
 
 * Open the Terminal 
 * Navigate to Project Folder
-* To Run Type:-> (waitress-serve --host=0.0.0.0 --port=5000 app:app)
-* Press Ctrl+Click on ("INFO:waitress:Serving on http://0.0.0.0:5000")
+* To Run Type:-> (python app.py)
+* Press Ctrl+Click on (" * Running on all addresses (0.0.0.0)
+                        * Running on https://127.0.0.1:5000
+                        * Running on https://192.168.129.114:5000")
 * It will open the the Project in Browser.
-
+ runthe ip adress as https://192.168.129.114:5000
 ---
 
 # 👨‍💻 Author
@@ -242,3 +244,4 @@ This system demonstrates:
 * Aadi Sai Neekshay 
 * IT Intern
 * Computer Science Student & Developer
+* For Software creation contact aadisaineekshay@gmail.com
