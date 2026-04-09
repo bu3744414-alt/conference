@@ -184,6 +184,7 @@ async function loadMyBookings(){
 
             <div class="booking-left">
                 <b>${hallDisplay}</b><br>
+                <small>Booked for: ${b.department}</small><br>
                 <small>${reasonText}: ${b.purpose}</small>
                 ${cancelReasonText}
             </div>

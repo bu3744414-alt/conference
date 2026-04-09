@@ -3,7 +3,7 @@ from database.db import get_connection
 from datetime import datetime, date
 from utils.email_service import send_email, build_email_template
 
-COMMON_EMAIL = "your_common_email@example.com"
+COMMON_EMAIL = "aadisaineekshay@gmail.com"
 
 booking = Blueprint("booking", __name__)
 
@@ -183,11 +183,14 @@ WHERE conference_id = ?
     )
 
 # send to user
-    if user_email:
-        send_email(user_email, "Booking Successful", body)
+    recipients = []
 
-# send to common mail
-    #send_email(COMMON_EMAIL, "Booking Successful", body)
+    if user_email:
+        recipients.append(user_email)
+
+    recipients.append(COMMON_EMAIL)
+    
+    send_email(recipients, "Booking Successful", body)
 
     return jsonify(status="success", message="Booking Successful")
 
@@ -340,10 +343,14 @@ def reschedule(booking_id):
         reason
     )
 
-    if user_email:
-        send_email(user_email, "Booking Rescheduled", body)
+    recipients = []
 
-    #send_email(COMMON_EMAIL, "Booking Rescheduled", body)
+    if user_email:
+        recipients.append(user_email)
+
+    recipients.append(COMMON_EMAIL)
+
+    send_email(recipients, "Booking Rescheduled", body)
 
     return jsonify(status="success", message="Booking rescheduled successfully")
 
@@ -470,11 +477,14 @@ def reassign():
     # 🔥 SEND EMAIL TO BOTH
 
     # send to user
-    if user_email:
-        send_email(user_email, "Booking Reassigned", body)
+    recipients = []
 
-    # send to common mail
-    send_email(COMMON_EMAIL, "Booking Reassigned", body)
+    if user_email:
+        recipients.append(user_email)
+
+    recipients.append(COMMON_EMAIL)
+
+    send_email(recipients, "Booking Reassigned", body)
     
     return jsonify(status="success", message="Hall Reassigned successfully")
 
@@ -523,6 +533,7 @@ def my_bookings():
 
     t.purpose,
     t.admin_remarks,
+    ISNULL(t.department, l.department),   -- ✅ Fix for the booked by dep
     t.admin_name,
     t.reassign_reason,   -- ✅ ADDED THIS
 
@@ -530,7 +541,9 @@ def my_bookings():
     ISNULL(t.reassign_flag,0)
 
 FROM booking_transactions t
-
+JOIN login_mas l
+ON t.empno = l.employee_id
+                   
 JOIN conference_master m
 ON t.conference_id = m.conference_id
 
@@ -556,20 +569,21 @@ ORDER BY start_time
 
     for r in rows:
         bookings.append({
-            "id": r[0],
-            "old_hall": r[1],
-            "new_hall": r[2],
-            "date": str(r[3]),
-            "start": str(r[4])[:5],
-            "end": str(r[5])[:5],
-            "status": r[6],
-            "purpose": r[7],
-            "admin_remarks": r[8],
-            "admin_name": r[9],
-            "reassign_reason": r[10],   # ✅ FIX
-            "rescheduled": r[11],
-            "reassign": r[12]
-        })
+        "id": r[0],
+        "old_hall": r[1],
+        "new_hall": r[2],   
+        "date": str(r[3]),
+        "start": str(r[4])[:5],
+        "end": str(r[5])[:5],
+        "status": r[6],
+        "purpose": r[7],
+        "admin_remarks": r[8],   # ✅ FIXED
+        "department": r[9],      # ✅ FIXED
+        "admin_name": r[10],
+        "reassign_reason": r[11],
+        "rescheduled": r[12],
+        "reassign": r[13]
+    })
 
     return jsonify(bookings)
 

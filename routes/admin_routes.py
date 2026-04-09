@@ -4,7 +4,7 @@ from database.db import get_connection
 import pandas as pd
 from utils.email_service import send_email, build_email_template
 
-COMMON_EMAIL = "your_common_email@example.com"
+COMMON_EMAIL = "aadisaineekshay@gmail.com"
 
 admin = Blueprint("admin", __name__)
 
@@ -81,12 +81,14 @@ def cancel(booking_id):
     
     # 🔥 SEND EMAIL TO BOTH
 
-    # send to user
-    if user_email:
-        send_email(user_email, "Booking Cancelled", body)
+    recipients = []
 
-    # send to common mail
-    #send_email(COMMON_EMAIL, "Booking Cancelled", body)
+    if user_email:
+        recipients.append(user_email)
+
+    recipients.append(COMMON_EMAIL)
+
+    send_email(recipients, "Booking Cancelled", body)
 
     return jsonify(status="success", message="Booking cancelled successfully")
 
