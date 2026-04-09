@@ -610,6 +610,7 @@ def all_bookings():
 
     t.department,
     l.department AS user_department,
+    l.role,   -- ✅ ADD THIS
 
     CASE 
         WHEN ISNULL(t.rescheduled,0)=1 THEN t.rescheduled_date
@@ -679,16 +680,17 @@ ORDER BY start_time
             "new_hall": r[2],
             "department": r[3],
             "user_dept": r[4],
-            "date": str(r[5]),
-            "start": str(r[6])[:5],
-            "end": str(r[7])[:5],
-            "user": r[8],
-            "status": r[9],
-            "purpose": r[10],
-            "admin_name": r[11],
-            "reassign_reason": r[12],
-            "rescheduled": r[13],
-            "reassign": r[14]
+            "role"      :r[5],
+            "date": str(r[6]),
+            "start": str(r[7])[:6],
+            "end": str(r[8])[:6],
+            "user": r[9],
+            "status": r[10],
+            "purpose": r[11],
+            "admin_name": r[12],
+            "reassign_reason": r[13],
+            "rescheduled": r[14],
+            "reassign": r[15]
         })
 
     return jsonify(data)

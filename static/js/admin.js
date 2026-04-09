@@ -82,10 +82,10 @@ async function loadAdminBookings(){
 
         let deptText = "";
 
-        if(b.user_dept === "Admin"){
+        if(b.role === "admin"){
             deptText = `
-            <small>Booked for: ${b.department}</small>
-            <br>
+            <small>Department: ${b.user_dept}</small><br>
+            <small>Booked for: ${b.department}</small><br>
             <small>Booked by: ${b.user} (ADMIN)</small>
             `;
         }
