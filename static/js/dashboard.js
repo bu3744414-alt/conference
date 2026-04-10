@@ -271,7 +271,7 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 function openRescheduleModal(booking) {
-
+    closeAllModals();   // 🔥 ADD THIS
     // Set date
     document.getElementById("rescheduleDate").value = booking.date;
 
@@ -286,3 +286,8 @@ function openRescheduleModal(booking) {
     document.getElementById("rescheduleModal").style.display = "block";
 }
 
+function closeAllModals(){
+    document.querySelectorAll(".modal, .popup-overlay").forEach(el => {
+        el.style.display = "none";
+    });
+}

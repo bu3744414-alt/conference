@@ -1062,9 +1062,7 @@ font-size:14px;
   color: red;
   font-weight: bold;
 }
-.booking-card {
-  position: relative;
-}
+
 
 .hidden {
   display: none;
@@ -1103,16 +1101,16 @@ font-size:14px;
 
 /* Popup box */
 .menu-popup {
-  position: absolute;
-  right: 0;
-  top: 35px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 5px;
-  width: 150px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-  z-index: 999;
+    position: absolute;
+    right: 0;
+    top: 35px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 5px;
+    width: 150px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    z-index: 99999;   /* FINAL */
 }
 
 /* 🔥 IMPORTANT FIX */
@@ -1149,10 +1147,16 @@ font-size:14px;
     background: #f5f6f8; /* or your normal bg */
 }
 .booking-card {
+    background:white;
+    padding:16px;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
     position: relative;
     z-index: 2;
-    background: #fff;
-    overflow: hidden;
+    overflow: visible;   /* IMPORTANT */
 }
 .modal,
 #bookingModal,
@@ -1162,4 +1166,12 @@ font-size:14px;
 }
 body {
     overflow-y: auto;
+}
+.modal,
+.popup-overlay {
+    z-index: 9999;
+}
+
+.modal {
+    pointer-events: auto;
 }

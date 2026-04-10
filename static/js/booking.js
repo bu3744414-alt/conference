@@ -223,7 +223,7 @@ async function loadMyBookings(){
 
 /* Open RESHUDULE  */
 function openReschedule(id){
-
+    closeAllModals();   // 🔥 ADD THIS
     resBookingId = id;
 
     const today = new Date().toISOString().split('T')[0];
@@ -292,6 +292,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
 /* OPEN BOOK HALL POPUP */
 function openModal(){
+    closeAllModals();   // 🔥 ADD THIS
     const modal = document.getElementById("bookingModal");
     const select = document.getElementById("hallSelect");
 
