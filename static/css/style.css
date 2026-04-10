@@ -1154,3 +1154,12 @@ font-size:14px;
     background: #fff;
     overflow: hidden;
 }
+.modal,
+#bookingModal,
+.popup-container {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+body {
+    overflow-y: auto;
+}
