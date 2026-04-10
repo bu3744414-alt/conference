@@ -70,19 +70,26 @@ async function loadAdminBookings(){
 
         let infoBlock = "";
 
+        // 🟢 ALWAYS show PURPOSE FIRST
+        let purposeLine = `
+            <br>
+            <small>
+                Purpose of Booking: ${b.purpose && b.purpose.trim() !== "" ? b.purpose : "Not specified"}
+            </small>
+        `;
+
         // 🔴 CANCELLED
         if(b.status === "Cancelled"){
             infoBlock = `
+                ${purposeLine}
                 <br>
                 <small style="color:red; font-weight:600;">
                     Cancelled by: ${b.admin_name ? b.admin_name : "ADMIN"} (ADMIN)
                 </small>
                 <br>
                 <small style="color:#555;">
-                    Reason: ${
-                        b.admin_remarks && 
-                        b.admin_remarks.trim() !== "" && 
-                        b.admin_remarks !== "Cancelled"
+                    Cancellation Reason: ${
+                        b.admin_remarks && b.admin_remarks.trim() !== "" 
                         ? b.admin_remarks 
                         : "Not specified"
                     }
@@ -93,13 +100,18 @@ async function loadAdminBookings(){
         // 🟢 REASSIGNED
         else if(b.reassign == 1){
             infoBlock = `
+                ${purposeLine}
                 <br>
                 <small style="color:green; font-weight:600;">
                     Reassigned by: ${b.admin_name ? b.admin_name : "ADMIN"} (ADMIN)
                 </small>
                 <br>
                 <small style="color:#555;">
-                    Reason: ${b.reassign_reason && b.reassign_reason.trim() !== "" ? b.reassign_reason : "Not specified"}
+                    Reassign Reason: ${
+                        b.reassign_reason && b.reassign_reason.trim() !== "" 
+                        ? b.reassign_reason 
+                        : "Not specified"
+                    }
                 </small>
             `;
         }
@@ -107,16 +119,21 @@ async function loadAdminBookings(){
         // 🔵 RESCHEDULED
         else if(b.rescheduled == 1){
             infoBlock = `
+                ${purposeLine}
                 <br>
                 <small style="color:blue; font-weight:600;">
-                    Reschedule Reason: ${b.resch_reason && b.resch_reason.trim() !== "" ? b.resch_reason : "Not specified"}
+                    Reschedule Reason: ${
+                        b.resch_reason && b.resch_reason.trim() !== "" 
+                        ? b.resch_reason 
+                        : "Not specified"
+                    }
                 </small>
             `;
         }
 
         // 🟢 BOOKED
         else{
-            infoBlock = `<small>Purpose: ${b.purpose}</small>`;
+            infoBlock = purposeLine;
         }
 
         // ===============================
@@ -127,13 +144,13 @@ async function loadAdminBookings(){
         let deptText = "";
         if(b.role === "admin"){
             deptText = `
-                <small>Department: ${b.user_dept}</small><br>
-                <small>Booked for: ${b.department}</small><br>
+                <small>User Department: ${b.user_dept}</small><br>
+                <small>Booked for: ${b.department}</small> (DEPARTMENT)<br>
                 <small>Booked by: ${b.user} (ADMIN)</small>
             `;
         } else {
             deptText = `
-                <small>Department: ${b.department}</small><br>
+                <small>User Department: ${b.department}</small><br>
                 <small>Booked by: ${b.user}</small>
             `;
         }
