@@ -108,6 +108,7 @@ if(start < officeStart || end > officeEnd){
         console.error(err);
     }
 }
+
 /* LoadBooking Main */
 async function loadMyBookings(){
 

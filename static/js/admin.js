@@ -6,7 +6,6 @@ const hallNames = {
     301: "Third Floor Conference",
     401: "Fourth Floor Conference"
 };
-
 async function loadAdminBookings(){
 
     document.getElementById("dashboardPanel").style.display="none";
@@ -28,41 +27,36 @@ async function loadAdminBookings(){
     box.innerHTML = "";
 
     if(bookings.length === 0){
-        
         box.innerHTML = "<p>No bookings found</p>";
         return;
     }
 
     bookings.forEach(b => {
-            console.log(b);
+
         let statusText = b.status;
 
-        // ✅ Only override if NOT cancelled
+        // ✅ Status override
         if(b.status !== "Cancelled"){
             if(b.reassign == 1){
                 statusText = "Reassigned";
             }
-        else if(b.rescheduled == 1){
-            statusText = "Rescheduled";
+            else if(b.rescheduled == 1){
+                statusText = "Rescheduled";
+            }
         }
-    } 
-        const reasonText = b.rescheduled == 1 ? "Reschedule Reason" : "Purpose";
 
         const today = new Date().toISOString().split('T')[0];
 
-        // 🔥 MENU (REASSIGN + CANCEL)
+        // 🔥 ACTION MENU
         let actionMenu = "";
-
         if(b.date >= today && b.status !== "Cancelled"){
             actionMenu = `
             <div class="menu-container">
                 <button class="menu-btn" onclick="toggleMenu(this, event)">⋯</button>
-                
                 <div class="menu-popup hidden">
                     <button onclick="openReassign(${b.id}, '${b.date}', '${b.start}', '${b.end}', event)">
                         Reassign Hall
                     </button>
-
                     <button class="cancel-btn" onclick="openCancel(${b.id}, event)">
                         Cancel
                     </button>
@@ -70,48 +64,38 @@ async function loadAdminBookings(){
             </div>`;
         }
 
-        // 🔥 FIX: declare variable
-        let cancelReasonText = "";
+        // ===============================
+        // ✅ MAIN FIX IS HERE 👇
+        // ===============================
 
+        let infoBlock = "";
+
+        // 🔴 CANCELLED
         if(b.status === "Cancelled"){
-        cancelReasonText = `
-            <br>
-            <small style="color:red;">
-                Cancelled by: ${b.admin_name} (ADMIN)
-            </small>
-            <br>
-            <small style="color:#555;">
-                Reason: ${b.admin_remarks && b.admin_remarks.trim() !== "" ? b.admin_remarks : "Not specified"}
-            </small>
-        `;
-    }
-
-        let deptText = "";
-
-        if(b.role === "admin"){
-            deptText = `
-            <small>Department: ${b.user_dept}</small><br>
-            <small>Booked for: ${b.department}</small><br>
-            <small>Booked by: ${b.user} (ADMIN)</small>
-            `;
-        }
-        else{
-            deptText = `
-            <small>Department: ${b.department}</small>
-            <br>
-            <small>Booked by: ${b.user}</small>
-            `;
-        }
-        // 🔥 FIXED HALL DISPLAY
-        let hallDisplay = `<b>${hallNames[b.old_hall] || b.old_hall}</b>`;
-
-        if(b.reassign == 1){
-            hallDisplay = `
-                <b>${hallNames[b.old_hall] || b.old_hall}</b> → 
-                <b>${hallNames[b.new_hall] || b.new_hall}</b>
+            infoBlock = `
                 <br>
-                <small style="color:green;">
-                    Reassigned by: ${b.admin_name} (ADMIN)
+                <small style="color:red; font-weight:600;">
+                    Cancelled by: ${b.admin_name ? b.admin_name : "ADMIN"} (ADMIN)
+                </small>
+                <br>
+                <small style="color:#555;">
+                    Reason: ${
+                        b.admin_remarks && 
+                        b.admin_remarks.trim() !== "" && 
+                        b.admin_remarks !== "Cancelled"
+                        ? b.admin_remarks 
+                        : "Not specified"
+                    }
+                </small>
+            `;
+        }
+
+        // 🟢 REASSIGNED
+        else if(b.reassign == 1){
+            infoBlock = `
+                <br>
+                <small style="color:green; font-weight:600;">
+                    Reassigned by: ${b.admin_name ? b.admin_name : "ADMIN"} (ADMIN)
                 </small>
                 <br>
                 <small style="color:#555;">
@@ -119,17 +103,61 @@ async function loadAdminBookings(){
                 </small>
             `;
         }
+
+        // 🔵 RESCHEDULED
+        else if(b.rescheduled == 1){
+            infoBlock = `
+                <br>
+                <small style="color:blue; font-weight:600;">
+                    Reschedule Reason: ${b.resch_reason && b.resch_reason.trim() !== "" ? b.resch_reason : "Not specified"}
+                </small>
+            `;
+        }
+
+        // 🟢 BOOKED
+        else{
+            infoBlock = `<small>Purpose: ${b.purpose}</small>`;
+        }
+
+        // ===============================
+        // END FIX
+        // ===============================
+
+        // 🟢 DEPARTMENT INFO
+        let deptText = "";
+        if(b.role === "admin"){
+            deptText = `
+                <small>Department: ${b.user_dept}</small><br>
+                <small>Booked for: ${b.department}</small><br>
+                <small>Booked by: ${b.user} (ADMIN)</small>
+            `;
+        } else {
+            deptText = `
+                <small>Department: ${b.department}</small><br>
+                <small>Booked by: ${b.user}</small>
+            `;
+        }
+
+        // 🟢 HALL DISPLAY
+        let hallDisplay = `<b>${hallNames[b.old_hall] || b.old_hall}</b>`;
+
+        if(b.reassign == 1){
+            hallDisplay = `
+                <b>${hallNames[b.old_hall] || b.old_hall}</b> → 
+                <b>${hallNames[b.new_hall] || b.new_hall}</b>
+            `;
+        }
+
+        // ✅ FINAL UI
         box.innerHTML += `
         <div class="booking-card">
 
             <div class="booking-left">
-                ${hallDisplay}
-                <br>
-                ${deptText} 
-                <br>
-                
-                <small>${reasonText}: ${b.purpose}</small>
-                ${cancelReasonText}
+                ${hallDisplay}<br>
+
+                ${deptText}
+
+                ${infoBlock}
             </div>
 
             <div class="booking-middle">
@@ -144,12 +172,10 @@ async function loadAdminBookings(){
             <div class="booking-actions">
                 ${actionMenu}
             </div>
-            
 
         </div>`;
     });
 }
-
 
 /* Cancel Booking  */
 async function confirmCancel(){

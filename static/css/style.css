@@ -1143,3 +1143,14 @@ font-size:14px;
 .hidden {
   display: none;
 }
+#adminBookingsPanel {
+    position: relative;
+    z-index: 1;
+    background: #f5f6f8; /* or your normal bg */
+}
+.booking-card {
+    position: relative;
+    z-index: 2;
+    background: #fff;
+    overflow: hidden;
+}

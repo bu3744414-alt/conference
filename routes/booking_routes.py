@@ -312,7 +312,8 @@ def reschedule(booking_id):
                 re_start_time=?,
                 re_end_time=?,
                 resch_reason=?,
-                rescheduled=1
+                rescheduled=1,
+                status='Rescheduled'
             WHERE booking_id=?
         """, (new_date, new_start, new_end, reason, booking_id))
 
@@ -354,6 +355,9 @@ def reschedule(booking_id):
     send_email(recipients, "Booking Rescheduled", body)
 
     return jsonify(status="success", message="Booking rescheduled successfully")
+
+
+
 # ---------------- REASSIGN HALL ----------------
 @booking.route('/reassign', methods=['POST'])
 def reassign():
@@ -639,42 +643,46 @@ def all_bookings():
 
     t.department,
     l.department AS user_department,
-    l.role,   -- ✅ ADD THIS
+    l.role,
 
+    -- date
     CASE 
         WHEN ISNULL(t.rescheduled,0)=1 THEN t.rescheduled_date
         ELSE t.trn_date
-    END,
+    END AS booking_date,
 
+    -- start
     CASE 
         WHEN ISNULL(t.rescheduled,0)=1 THEN t.re_start_time
         ELSE t.start_time
-    END,
+    END AS start_time,
 
+    -- end
     CASE 
         WHEN ISNULL(t.rescheduled,0)=1 THEN t.re_end_time
         ELSE t.end_time
-    END,
+    END AS end_time,
 
     t.empname,
 
+    -- ✅ FINAL STATUS (ONLY ONCE)
     CASE 
         WHEN t.status = 'Cancelled' THEN 'Cancelled'
         WHEN ISNULL(t.reassign_flag,0)=1 THEN 'Reassigned'
         WHEN ISNULL(t.rescheduled,0)=1 THEN 'Rescheduled'
         ELSE t.status
-    END,
+    END AS status,
 
-    CASE 
-        WHEN ISNULL(t.rescheduled,0)=1 THEN t.resch_reason
-        ELSE t.purpose
-    END,
-
-    t.admin_name,
+    -- ✅ DIRECT DATA (NO CASE HERE)
+    t.purpose,
+    t.admin_remarks,
+    t.resch_reason,
     t.reassign_reason,
 
-    ISNULL(t.rescheduled,0),
-    ISNULL(t.reassign_flag,0)
+    t.admin_name,
+
+    ISNULL(t.rescheduled,0) AS rescheduled,
+    ISNULL(t.reassign_flag,0) AS reassign
 
 FROM booking_transactions t
 
@@ -704,23 +712,29 @@ ORDER BY start_time
 
     for r in rows:
         data.append({
-            "id": r[0],
-            "old_hall": r[1],
-            "new_hall": r[2],
-            "department": r[3],
-            "user_dept": r[4],
-            "role"      :r[5],
-            "date": str(r[6]),
-            "start": str(r[7])[:6],
-            "end": str(r[8])[:6],
-            "user": r[9],
-            "status": r[10],
-            "purpose": r[11],
-            "admin_name": r[12],
-            "reassign_reason": r[13],
-            "rescheduled": r[14],
-            "reassign": r[15]
-        })
+        "id": r[0],
+        "old_hall": r[1],
+        "new_hall": r[2],
+        "department": r[3],
+        "user_dept": r[4],
+        "role": r[5],
+
+        "date": str(r[6]),
+        "start": str(r[7])[:5],
+        "end": str(r[8])[:5],
+
+        "user": r[9],
+        "status": r[10],
+
+        "purpose": r[11],
+        "admin_remarks": r[12],
+        "resch_reason": r[13],
+        "reassign_reason": r[14],
+
+        "admin_name": r[15],
+        "rescheduled": r[16],
+        "reassign": r[17]
+    })
 
     return jsonify(data)
 
@@ -752,9 +766,9 @@ def monthly_bookings():
 
     CASE 
         WHEN bt.status = 'Cancelled' THEN 'Cancelled'
-        WHEN bt.status = 'Booked' THEN 'Booked'
         WHEN ISNULL(bt.rescheduled,0)=1 THEN 'Rescheduled'
         WHEN ISNULL(bt.reassign_flag,0)=1 THEN 'Reassigned'
+        WHEN bt.status = 'Booked' THEN 'Booked'
         ELSE bt.status
     END AS status
 
